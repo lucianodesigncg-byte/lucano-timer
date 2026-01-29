@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Modality } from '@google/genai';
 
+// --- Utilitários de Áudio ---
 const decode = (base64: string) => {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -37,21 +38,23 @@ const BRAND = {
 };
 
 const App = () => {
+  // Estado inicial ultra-protegido contra corrupção de localStorage
   const [data, setData] = useState(() => {
     try {
       const saved = localStorage.getItem('lucano_v22_data');
       if (!saved) return { client: '', project: '', rate: 150, seconds: 0, active: false, history: [], targetSeconds: 0 };
       const parsed = JSON.parse(saved);
       return {
-        client: parsed.client || '',
-        project: parsed.project || '',
-        rate: parsed.rate || 150,
-        seconds: parsed.seconds || 0,
-        active: false, // Sempre começa pausado
+        client: String(parsed.client || ''),
+        project: String(parsed.project || ''),
+        rate: Number(parsed.rate || 150),
+        seconds: Number(parsed.seconds || 0),
+        active: false, // Forçar pausado no boot
         history: Array.isArray(parsed.history) ? parsed.history : [],
-        targetSeconds: parsed.targetSeconds || 0
+        targetSeconds: Number(parsed.targetSeconds || 0)
       };
-    } catch {
+    } catch (e) {
+      console.error("Erro ao carregar dados:", e);
       return { client: '', project: '', rate: 150, seconds: 0, active: false, history: [], targetSeconds: 0 };
     }
   });
@@ -61,19 +64,22 @@ const App = () => {
   const [alarmActive, setAlarmActive] = useState(false);
   
   const timerRef = useRef<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioAlarmRef = useRef<HTMLAudioElement | null>(null);
   const sessionPromiseRef = useRef<any>(null);
   const nextStartTimeRef = useRef(0);
 
+  // Inicializa alarme
   useEffect(() => {
-    audioRef.current = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
-    audioRef.current.loop = true;
+    audioAlarmRef.current = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+    audioAlarmRef.current.loop = true;
   }, []);
 
+  // Salva dados no disco
   useEffect(() => {
     localStorage.setItem('lucano_v22_data', JSON.stringify(data));
   }, [data]);
 
+  // Lógica do cronômetro com cleanup
   useEffect(() => {
     if (data.active) {
       timerRef.current = setInterval(() => {
@@ -81,15 +87,15 @@ const App = () => {
           const nextSeconds = prev.seconds + 1;
           if (prev.targetSeconds > 0 && nextSeconds === prev.targetSeconds) {
             setAlarmActive(true);
-            audioRef.current?.play().catch(() => {});
+            audioAlarmRef.current?.play().catch(() => {});
           }
           return { ...prev, seconds: nextSeconds };
         });
       }, 1000);
     } else {
-      clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => clearInterval(timerRef.current);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [data.active]);
 
   const formatTime = (s: number) => {
@@ -108,8 +114,8 @@ const App = () => {
       id: Date.now(),
       project: String(data.project || 'Projeto Premium'),
       client: String(data.client || 'Cliente VIP'),
-      time: data.seconds,
-      cost: calculateCost(data.seconds),
+      time: Number(data.seconds),
+      cost: Number(calculateCost(data.seconds)),
       date: new Date().toLocaleDateString('pt-BR')
     };
     setData((prev: any) => ({ 
@@ -123,12 +129,13 @@ const App = () => {
 
   const toggleVoice = async () => {
     if (isVoiceActive) {
-      sessionPromiseRef.current?.then((s:any) => s.close());
+      if (sessionPromiseRef.current) sessionPromiseRef.current.then((s: any) => s.close());
       setIsVoiceActive(false);
       return;
     }
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = (process && process.env && process.env.API_KEY) || "";
+      const ai = new GoogleGenAI({ apiKey });
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const inputCtx = new AudioContext({ sampleRate: 16000 });
       const outputCtx = new AudioContext({ sampleRate: 24000 });
@@ -137,7 +144,7 @@ const App = () => {
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: 'Você é o assistente virtual de Lucano Designer3D. Seja profissional, direto e ajude com cronometragem e orçamentos.',
+          systemInstruction: 'Você é o assistente virtual de Lucano Designer3D. Responda de forma curta e profissional sobre produtividade.',
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
         },
         callbacks: {
@@ -148,17 +155,17 @@ const App = () => {
               const input = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(input.length);
               for (let i = 0; i < input.length; i++) int16[i] = input[i] * 32768;
-              sessionPromise.then((s:any) => s.sendRealtimeInput({ media: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }));
+              sessionPromise.then((s: any) => s.sendRealtimeInput({ media: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }));
             };
             source.connect(proc);
             proc.connect(inputCtx.destination);
             setIsVoiceActive(true);
           },
-          onmessage: async (msg:any) => {
-            const audio = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-            if (audio) {
+          onmessage: async (msg: any) => {
+            const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+            if (audioData) {
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
-              const buffer = await decodeAudioData(decode(audio), outputCtx, 24000, 1);
+              const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
               const source = outputCtx.createBufferSource();
               source.buffer = buffer;
               source.connect(outputCtx.destination);
@@ -171,119 +178,188 @@ const App = () => {
         }
       });
       sessionPromiseRef.current = sessionPromise;
-    } catch { 
+    } catch (e) { 
+      console.error("Erro voz:", e);
       setIsVoiceActive(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#050505] flex flex-col text-white font-sans border-x border-white/5 relative">
+    <div className="flex-1 bg-black flex flex-col text-white relative z-10 overflow-hidden">
+      {/* Alarme de Meta */}
       {alarmActive && (
-        <div className="fixed inset-0 z-[999] bg-[#d4af37] flex flex-col items-center justify-center p-10 text-center animate-fadeIn">
+        <div className="fixed inset-0 z-[1000] bg-[#d4af37] flex flex-col items-center justify-center p-10 text-center animate-fadeIn">
           <i className="fas fa-crown text-9xl mb-6 text-black"></i>
           <h2 className="text-4xl font-black mb-4 text-black italic uppercase">Meta Atingida!</h2>
-          <button onClick={() => { setAlarmActive(false); audioRef.current?.pause(); }} className="bg-black text-[#d4af37] px-14 py-6 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-transform">FECHAR ALARME</button>
+          <button 
+            onClick={() => { setAlarmActive(false); audioAlarmRef.current?.pause(); }} 
+            className="bg-black text-[#d4af37] px-14 py-6 rounded-3xl font-black text-xl shadow-2xl active:scale-95 transition-transform"
+          >
+            FECHAR ALARME
+          </button>
         </div>
       )}
 
-      <header className="p-8 text-center bg-[#0a0a0a] border-b border-[#d4af37]/20">
-        <h1 className="text-2xl font-black italic tracking-tighter text-[#d4af37]">{BRAND.name}</h1>
-        <p className="text-[8px] tracking-[0.5em] text-white/30 font-bold uppercase mt-1">{BRAND.tagline}</p>
+      {/* Header Fixo */}
+      <header className="p-6 text-center bg-[#0a0a0a] border-b border-[#d4af37]/20">
+        <h1 className="text-xl font-black italic tracking-tighter text-[#d4af37]">{String(BRAND.name)}</h1>
+        <p className="text-[8px] tracking-[0.5em] text-white/30 font-bold uppercase mt-1">{String(BRAND.tagline)}</p>
       </header>
 
-      <nav className="flex bg-[#050505] border-b border-white/5 sticky top-0 z-50">
+      {/* Navegação */}
+      <nav className="flex bg-black border-b border-white/5">
         {[
-          { id: 'timer', label: 'TRABALHO', icon: 'fa-stopwatch' },
-          { id: 'ia', label: 'IA VOZ', icon: 'fa-robot' },
-          { id: 'history', label: 'RECIBOS', icon: 'fa-file-invoice-dollar' }
+          { id: 'timer', label: 'TIMER', icon: 'fa-stopwatch' },
+          { id: 'ia', label: 'VOZ IA', icon: 'fa-robot' },
+          { id: 'history', label: 'LISTA', icon: 'fa-file-invoice-dollar' }
         ].map(tab => (
           <button 
             key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-5 flex flex-col items-center gap-2 transition-all ${activeTab === tab.id ? 'text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-zinc-700'}`}
+            className={`flex-1 py-4 flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-zinc-700'}`}
           >
-            <i className={`fas ${tab.icon} text-sm`}></i>
-            <span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span>
+            <i className={`fas ${tab.icon} text-xs`}></i>
+            <span className="text-[8px] font-black uppercase tracking-widest">{String(tab.label)}</span>
           </button>
         ))}
       </nav>
 
-      <main className="flex-1 p-6 overflow-y-auto pb-32 no-scrollbar">
+      {/* Conteúdo Principal */}
+      <main className="flex-1 p-6 overflow-y-auto no-scrollbar">
         {activeTab === 'timer' && (
-          <div className="space-y-8 animate-fadeIn">
-            <div className="bg-[#0f0f0f] p-10 rounded-[3rem] text-center border border-white/5 shadow-2xl relative">
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4">Cronômetro Pro</p>
-              <div className="text-7xl font-mono font-bold mb-2 tracking-tighter">{formatTime(data.seconds)}</div>
-              <div className="text-[#d4af37] font-black text-3xl italic mb-10">{formatBRL(calculateCost(data.seconds))}</div>
+          <div className="space-y-6 animate-fadeIn pb-10">
+            <div className="bg-[#0f0f0f] p-8 rounded-[3rem] text-center border border-white/5 shadow-2xl relative overflow-hidden">
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-4">Tempo de Produção</p>
+              <div className="text-6xl font-mono font-bold mb-2 tracking-tighter">{String(formatTime(data.seconds))}</div>
+              <div className="text-[#d4af37] font-black text-2xl italic mb-8">{String(formatBRL(calculateCost(data.seconds)))}</div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setData((p:any) => ({...p, active: true}))} className={`py-5 rounded-2xl font-black text-xs transition-all ${data.active ? 'bg-white/5 text-zinc-800' : 'bg-[#d4af37] text-black shadow-lg shadow-[#d4af37]/20'}`}>START</button>
-                <button onClick={() => setData((p:any) => ({...p, active: false}))} className={`py-5 rounded-2xl font-black text-xs transition-all ${!data.active ? 'bg-white/5 text-zinc-800' : 'bg-white/10'}`}>PAUSE</button>
-                <button onClick={saveWork} className="col-span-2 py-6 bg-white text-black rounded-[2.5rem] font-black text-[10px] uppercase tracking-[0.2em] mt-2 transition-all active:scale-95 shadow-xl">FINALIZAR SESSÃO</button>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => setData((p: any) => ({...p, active: true}))} 
+                  className={`py-4 rounded-2xl font-black text-[10px] transition-all ${data.active ? 'bg-white/5 text-zinc-800' : 'bg-[#d4af37] text-black shadow-lg shadow-[#d4af37]/20'}`}
+                >
+                  START
+                </button>
+                <button 
+                  onClick={() => setData((p: any) => ({...p, active: false}))} 
+                  className={`py-4 rounded-2xl font-black text-[10px] transition-all ${!data.active ? 'bg-white/5 text-zinc-800' : 'bg-white/10'}`}
+                >
+                  PAUSE
+                </button>
+                <button 
+                  onClick={saveWork} 
+                  className="col-span-2 py-5 bg-white text-black rounded-[2.5rem] font-black text-[9px] uppercase tracking-[0.2em] mt-2 active:scale-95 transition-all shadow-xl"
+                >
+                  FINALIZAR PROJETO
+                </button>
               </div>
             </div>
 
-            <div className="bg-[#0a0a0a] p-8 rounded-[2.5rem] border border-white/5 space-y-5 shadow-inner">
-              <input className="w-full p-5 bg-[#020202] border border-white/10 rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:border-[#d4af37]/50" value={data.client} onChange={e => setData((p:any) => ({...p, client: e.target.value}))} placeholder="NOME DO CLIENTE" />
-              <input className="w-full p-5 bg-[#020202] border border-white/10 rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:border-[#d4af37]/50" value={data.project} onChange={e => setData((p:any) => ({...p, project: e.target.value}))} placeholder="NOME DO PROJETO" />
-              <div className="grid grid-cols-2 gap-4">
-                <select className="w-full p-4 bg-[#020202] border border-white/10 rounded-xl text-xs font-bold text-[#d4af37]" value={data.targetSeconds} onChange={e => setData((p:any) => ({...p, targetSeconds: parseInt(e.target.value)}))}>
+            <div className="bg-[#0a0a0a] p-6 rounded-[2.5rem] border border-white/5 space-y-4">
+              <input 
+                className="w-full p-4 bg-black border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#d4af37]/50" 
+                value={String(data.client)} 
+                onChange={e => setData((p: any) => ({...p, client: e.target.value}))} 
+                placeholder="CLIENTE" 
+              />
+              <input 
+                className="w-full p-4 bg-black border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#d4af37]/50" 
+                value={String(data.project)} 
+                onChange={e => setData((p: any) => ({...p, project: e.target.value}))} 
+                placeholder="PROJETO" 
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <select 
+                  className="w-full p-3 bg-black border border-white/10 rounded-xl text-[10px] font-bold text-[#d4af37]" 
+                  value={Number(data.targetSeconds)} 
+                  onChange={e => setData((p: any) => ({...p, targetSeconds: parseInt(e.target.value)}))}
+                >
                   <option value="0">SEM META</option>
                   <option value="1800">30 MIN</option>
                   <option value="3600">1 HORA</option>
                   <option value="7200">2 HORAS</option>
                 </select>
-                <input type="number" className="w-full p-4 bg-[#020202] border border-white/10 rounded-xl text-xs font-bold" value={data.rate} onChange={e => setData((p:any) => ({...p, rate: parseInt(e.target.value) || 0}))} placeholder="R$/HORA" />
+                <input 
+                  type="number" 
+                  className="w-full p-3 bg-black border border-white/10 rounded-xl text-[10px] font-bold outline-none" 
+                  value={Number(data.rate)} 
+                  onChange={e => setData((p: any) => ({...p, rate: parseInt(e.target.value) || 0}))} 
+                  placeholder="R$/H"
+                />
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'ia' && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fadeIn">
-            <div className="relative cursor-pointer group" onClick={toggleVoice}>
+          <div className="flex flex-col items-center justify-center py-20 animate-fadeIn space-y-8">
+            <h2 className="text-[#d4af37] font-black text-xl italic uppercase tracking-tighter">Diamond Voice</h2>
+            <div className="relative cursor-pointer" onClick={toggleVoice}>
               <div className={`absolute inset-0 rounded-full blur-[80px] transition-all duration-1000 ${isVoiceActive ? 'bg-red-500 opacity-30 scale-150' : 'bg-[#d4af37] opacity-10'}`}></div>
-              <div className={`w-64 h-64 rounded-full flex flex-col items-center justify-center border-[12px] transition-all relative z-10 ${isVoiceActive ? 'bg-red-600 border-red-900/50 animate-pulse' : 'bg-[#0f0f0f] border-white/5'}`}>
-                <i className={`fas ${isVoiceActive ? 'fa-stop' : 'fa-microphone'} text-7xl text-white mb-4`}></i>
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">{isVoiceActive ? 'DESLIGAR' : 'FALAR COM IA'}</span>
+              <div className={`w-52 h-52 rounded-full flex flex-col items-center justify-center border-[10px] transition-all relative z-10 ${isVoiceActive ? 'bg-red-600 border-red-900/50 animate-pulse' : 'bg-[#0f0f0f] border-white/5'}`}>
+                <i className={`fas ${isVoiceActive ? 'fa-stop' : 'fa-microphone'} text-5xl text-white mb-4`}></i>
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40">{isVoiceActive ? 'PARAR' : 'ATIVAR'}</span>
               </div>
             </div>
+            <p className="text-[9px] text-zinc-600 uppercase font-black text-center tracking-widest">Controle por voz ativado</p>
           </div>
         )}
 
         {activeTab === 'history' && (
-          <div className="space-y-5 animate-fadeIn">
+          <div className="space-y-4 animate-fadeIn pb-10">
             {data.history.length === 0 ? (
-              <div className="text-center py-40 opacity-20">NENHUM REGISTRO</div>
+              <div className="text-center py-40 opacity-20 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-4">
+                 <i className="fas fa-gem text-5xl"></i>
+                 Lista Vazia
+              </div>
             ) : (
               data.history.map((h: any) => (
-                <div key={h.id} className="p-8 bg-[#0f0f0f] rounded-[3rem] border border-white/5 shadow-2xl">
-                  <div className="flex justify-between items-start mb-6">
+                <div key={h.id} className="p-6 bg-[#0f0f0f] rounded-[2.5rem] border border-white/5 shadow-2xl group hover:border-[#d4af37]/30 transition-all">
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h4 className="font-black text-white text-lg uppercase italic">{String(h.project)}</h4>
-                      <div className="text-[10px] text-zinc-600 font-black uppercase mt-1">{String(h.client)} • {h.date}</div>
+                      <h4 className="font-black text-white text-sm uppercase italic group-hover:text-[#d4af37]">{String(h.project)}</h4>
+                      <div className="text-[8px] text-zinc-600 font-black uppercase mt-1">{String(h.client)} • {String(h.date)}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[#d4af37] font-black text-2xl">{formatBRL(h.cost)}</div>
-                      <div className="text-[9px] font-black text-zinc-700 uppercase">{formatTime(h.time)}</div>
+                      <div className="text-[#d4af37] font-black text-xl">{String(formatBRL(h.cost))}</div>
+                      <div className="text-[8px] font-black text-zinc-700 uppercase">{String(formatTime(h.time))}</div>
                     </div>
                   </div>
-                  <button onClick={() => {
-                      const txt = `💎 *RELATÓRIO LUCANO*\n\nPROJETO: ${h.project}\nCLIENTE: ${h.client}\nTEMPO: ${formatTime(h.time)}\nVALOR: ${formatBRL(h.cost)}`;
-                      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
-                  }} className="w-full py-5 bg-[#25d366] text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4">
-                    <i className="fab fa-whatsapp text-xl"></i> ENVIAR RECIBO
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        const txt = `💎 *RECIBO LUCANO*\n\nPROJETO: ${h.project.toUpperCase()}\nCLIENTE: ${h.client.toUpperCase()}\nTEMPO: ${formatTime(h.time)}\nVALOR: ${formatBRL(h.cost)}`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+                      }} 
+                      className="flex-1 py-4 bg-[#25d366] text-white rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+                    >
+                      <i className="fab fa-whatsapp text-lg"></i> WHATSAPP
+                    </button>
+                    <button 
+                      onClick={() => setData((p: any) => ({...p, history: p.history.filter((x: any) => x.id !== h.id)}))}
+                      className="w-12 h-12 flex items-center justify-center text-red-500/20 hover:text-red-500 bg-white/5 rounded-2xl border border-white/5"
+                    >
+                      <i className="fas fa-trash-alt text-xs"></i>
+                    </button>
+                  </div>
                 </div>
               ))
             )}
           </div>
         )}
       </main>
+
+      <footer className="p-4 bg-[#0a0a0a] border-t border-white/5 text-center">
+        <span className="text-[7px] font-black text-zinc-700 uppercase tracking-[0.4em]">
+          LUCANO DESIGNER3D © {new Date().getFullYear()}
+        </span>
+      </footer>
     </div>
   );
 };
 
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  createRoot(rootElement).render(<App />);
+// Renderização Principal
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
+  root.render(<App />);
 }
