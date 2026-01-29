@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUCANO DESIGNER3D - MASTER V10</title>
+    <title>LUCANO DESIGNER3D - MASTER V12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="importmap">
@@ -35,16 +35,16 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         .timer-glow {
-          text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+          text-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
         }
 
         input:focus, textarea:focus {
-          border-color: rgba(8, 145, 178, 0.6) !important;
+          border-color: rgba(8, 145, 178, 0.5) !important;
           background-color: rgba(0, 0, 0, 0.8) !important;
         }
 
         .animate-in {
-          animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes slideUp {
@@ -53,16 +53,12 @@
         }
 
         ::selection {
-          background: rgba(8, 145, 178, 0.5);
+          background: rgba(8, 145, 178, 0.4);
           color: white;
         }
-
-        /* Estilização de scrollbars internas se necessário */
+        
         ::-webkit-scrollbar {
-          width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-          background: transparent;
+          width: 5px;
         }
         ::-webkit-scrollbar-thumb {
           background: rgba(255,255,255,0.1);
