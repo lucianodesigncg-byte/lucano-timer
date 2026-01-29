@@ -3,7 +3,7 @@
   "name": "Lucano Designer3d",
   "short_name": "SketchTime",
   "description": "Gestão de tempo e produtividade para SketchUp",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#334155",
   "theme_color": "#334155",

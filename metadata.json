@@ -1,5 +1,7 @@
 {
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "name": "SketchTime Web",
-  "description": ""
+  "description": "Sistema de gestão de tempo com IA para o Lucano Designer3d"
 }

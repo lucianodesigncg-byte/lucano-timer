@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lucano Designer3d - Pro Timer</title>
+    <title>LUCANO DESIGNER3D - PREVIEW</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -22,27 +22,61 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
+        
+        :root {
+          --bg-main: #0f172a;
+          --bg-nav: #0a0f1d;
+          --accent: #22d3ee;
+          --glass: rgba(30, 41, 59, 0.7);
+        }
+
         body { 
-          background-color: #0f172a; 
+          background-color: var(--bg-main); 
           font-family: 'Inter', sans-serif; 
           margin: 0;
-          overflow: hidden;
           height: 100vh;
           color: white;
+          overflow: hidden;
         }
+
         #root { height: 100%; display: flex; flex-direction: column; }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        * { -webkit-tap-highlight-color: transparent; outline: none !important; }
         
-        .timer-card {
-          background: linear-gradient(145deg, #1e293b, #0f172a);
-          border: 1px solid rgba(255,255,255,0.05);
+        .glass-card {
+          background: var(--glass);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .timer-glow {
+          text-shadow: 0 0 30px rgba(34, 211, 238, 0.4);
+        }
+
+        .btn-press:active {
+          transform: scale(0.96);
+        }
+
+        input::placeholder {
+          color: #475569;
+        }
+
+        @keyframes pulse-soft {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+
+        .active-pulse {
+          animation: pulse-soft 2s infinite;
         }
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel" data-presets="react,typescript" data-type="module" src="index.tsx"></script>
+    <script type="text/babel" data-presets="react,typescript" data-type="module" src="./index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
