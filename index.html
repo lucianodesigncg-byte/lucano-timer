@@ -7,7 +7,12 @@
     <title>Lucano Designer3d - Diamond v22</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script>
+      // Proteção global contra erros de ambiente
+      window.process = { env: { API_KEY: "" } };
+    </script>
+
     <script type="importmap">
 {
   "imports": {
@@ -20,21 +25,33 @@
   }
 }
 </script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { 
-          background-color: #050505; 
+          background-color: #000; 
           font-family: 'Inter', sans-serif; 
           margin: 0;
-          overflow-x: hidden;
+          overflow: hidden;
+          height: 100vh;
         }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #root { height: 100%; display: flex; flex-direction: column; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        * { -webkit-tap-highlight-color: transparent; }
+        * { -webkit-tap-highlight-color: transparent; outline: none !important; }
+        
+        .diamond-glow {
+          position: fixed;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: radial-gradient(circle at 50% 20%, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
     </style>
 </head>
 <body>
+    <div class="diamond-glow"></div>
     <div id="root"></div>
     <script type="text/babel" data-presets="react,typescript" data-type="module" src="index.tsx"></script>
 </body>
