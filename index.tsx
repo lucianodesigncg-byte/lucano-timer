@@ -5,7 +5,7 @@ const BRAND_NAME = 'LUCANO DESIGNER3D';
 const ADDRESS = 'Rua Betânia N392 Bairro Oliveira';
 const CONTACT = 'Tel / WhatsApp: 74 9 91108629';
 
-// Sistema de áudio para o alarme
+// Sons de feedback
 const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
@@ -35,17 +35,12 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
 const App = () => {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('lucano_v25_final');
+      const saved = localStorage.getItem('lucano_v26_final');
       if (!saved) return { client: '', project: '', notes: '', rate: 15, seconds: 0, active: false, goalMinutes: 1, history: [] };
       const parsed = JSON.parse(saved);
       return {
-        client: String(parsed.client || ''),
-        project: String(parsed.project || ''),
-        notes: String(parsed.notes || ''),
-        rate: Number(parsed.rate || 15),
-        seconds: Number(parsed.seconds || 0),
-        active: false,
-        goalMinutes: Number(parsed.goalMinutes || 1),
+        ...parsed,
+        active: false, // Inicia pausado por segurança
         history: Array.isArray(parsed.history) ? parsed.history : []
       };
     } catch {
@@ -61,10 +56,10 @@ const App = () => {
   const alarmRef = useRef<any>(null);
 
   useEffect(() => {
-    localStorage.setItem('lucano_v25_final', JSON.stringify(data));
+    localStorage.setItem('lucano_v26_final', JSON.stringify(data));
   }, [data]);
 
-  // Cronômetro progressivo
+  // Lógica do Cronômetro
   useEffect(() => {
     if (data.active) {
       timerRef.current = setInterval(() => {
@@ -76,7 +71,7 @@ const App = () => {
     return () => clearInterval(timerRef.current);
   }, [data.active]);
 
-  // Meta de tempo
+  // Alerta de Meta Alcançada
   useEffect(() => {
     const goalSec = (data.goalMinutes || 0) * 60;
     if (data.active && goalSec > 0 && data.seconds >= goalSec) {
@@ -85,7 +80,7 @@ const App = () => {
     }
   }, [data.seconds, data.active, data.goalMinutes]);
 
-  // Alarme em loop
+  // Som do Alarme (Loop)
   useEffect(() => {
     if (isAlarmActive) {
       playSound('alarm');
@@ -105,9 +100,9 @@ const App = () => {
 
   const cur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // SALVAR PROJETO: Para alarme, zera cronômetro e salva no histórico
+  // FUNÇÃO SALVAR: Cria registro e reseta cronômetro
   const handleSave = () => {
-    if (data.seconds < 1) return alert("Nenhum tempo para salvar.");
+    if (data.seconds < 1) return alert("Nada para salvar ainda.");
 
     const now = new Date();
     const endTime = now.toLocaleString('pt-BR');
@@ -116,8 +111,8 @@ const App = () => {
 
     const entry = {
       id: Date.now().toString(),
-      project: String(data.project || "PROJETO SEM NOME"),
-      client: String(data.client || "CLIENTE NÃO INFORMADO"),
+      project: String(data.project || "SEM NOME"),
+      client: String(data.client || "SEM CLIENTE"),
       notes: String(data.notes || ""),
       time: Number(data.seconds),
       rate: Number(data.rate),
@@ -129,17 +124,17 @@ const App = () => {
 
     setData((p: any) => ({ 
       ...p, 
-      seconds: 0, // Zera após salvar
+      seconds: 0, // Zera cronômetro após salvar
       active: false, 
       history: [entry, ...p.history] 
     }));
     
-    setIsAlarmActive(false); // Para o alarme
+    setIsAlarmActive(false);
     setActiveTab('historico');
     playSound('success');
   };
 
-  // CONTINUAR: Retoma tempo acumulado e volta a contar
+  // FUNÇÃO CONTINUAR: Retoma tempo acumulado e mantém contagem ativa
   const resumeHistory = (h: any) => {
     setData((p: any) => ({
       ...p,
@@ -147,12 +142,24 @@ const App = () => {
       client: String(h.client),
       notes: String(h.notes),
       rate: Number(h.rate),
-      seconds: Number(h.time), // Retoma o tempo
-      active: true // Já começa contando
+      seconds: Number(h.time), // Carrega o tempo que já tinha
+      active: true // Já inicia contando progressivamente
     }));
     setIsAlarmActive(false);
     setActiveTab('controle');
     playSound('start');
+  };
+
+  // EXPORTAÇÃO WORD CORRIGIDA (Com BOM para abrir sem erro)
+  const exportWord = (content: string, filename: string) => {
+    const BOM = "\ufeff"; // Byte Order Mark - Isso resolve o erro de codificação no Word
+    const blob = new Blob([BOM + content], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const toggleSelect = (id: string) => {
@@ -163,27 +170,13 @@ const App = () => {
   const sumTotal = selectedProjects.reduce((acc: number, h: any) => acc + h.total, 0);
   const sumSeconds = selectedProjects.reduce((acc: number, h: any) => acc + h.time, 0);
 
-  // EXPORTAÇÃO WORD (Com BOM UTF-8 para evitar erro de codificação)
-  const exportWord = (content: string, name: string) => {
-    const BOM = "\ufeff"; // Byte Order Mark para UTF-8
-    const blob = new Blob([BOM + content], { type: 'application/msword;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${name}.doc`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const getIndividualText = (h: any) => {
+    return `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO INDIVIDUAL DE PRODUÇÃO\n\nCLIENTE: ${h.client}\nPROJETO: ${h.project}\nINÍCIO: ${h.startTime}\nFIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTEMPO TOTAL: ${formatT(h.time)}\nVALOR TOTAL: ${cur(h.total)}\n\nNOTAS:\n${h.notes || '-'}`;
   };
 
-  const generateIndividualText = (h: any) => {
-    return `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO INDIVIDUAL DE PRODUÇÃO\n\nCLIENTE: ${h.client}\nPROJETO: ${h.project}\nINÍCIO: ${h.startTime}\nFIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTEMPO TOTAL: ${formatT(h.time)}\nVALOR TOTAL: ${cur(h.total)}\n\nNOTAS TÉCNICAS:\n${h.notes || '-'}`;
-  };
-
-  const generateSumText = () => {
+  const getSumText = () => {
     let t = `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO DE SOMA UNIFICADA\n\nPROJETO | CLIENTE | DATA | TEMPO | TOTAL\n`;
-    selectedProjects.forEach(p => {
-      t += `${p.project} | ${p.client} | ${p.date} | ${formatT(p.time)} | ${cur(p.total)}\n`;
-    });
+    selectedProjects.forEach(p => t += `${p.project} | ${p.client} | ${p.date} | ${formatT(p.time)} | ${cur(p.total)}\n`);
     t += `\nSOMA ACUMULADA: ${formatT(sumSeconds)} | ${cur(sumTotal)}`;
     return t;
   };
@@ -191,7 +184,7 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-[#f8fafc] text-slate-900 font-sans overflow-hidden select-none">
       
-      {/* CABEÇALHO SLATE GRAY */}
+      {/* HEADER SLATE GRAY */}
       <header className="header-premium shadow-lg z-30">
         <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">{BRAND_NAME}</h1>
         <div className="text-[10px] font-bold text-slate-200 mt-2">
@@ -204,12 +197,12 @@ const App = () => {
       <nav className="flex bg-white border-b border-slate-300 z-20">
         <button onClick={() => setActiveTab('controle')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'controle' ? 'text-slate-900' : 'text-slate-400'}`}>
           <i className="fas fa-play-circle text-xl"></i>
-          <span className="text-[10px] font-black uppercase tracking-widest">Controle Ativo</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Controle</span>
           {activeTab === 'controle' && <div className="absolute bottom-0 w-full h-[4px] bg-slate-600"></div>}
         </button>
         <button onClick={() => setActiveTab('historico')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'historico' ? 'text-slate-900' : 'text-slate-400'}`}>
           <i className="fas fa-file-invoice-dollar text-xl"></i>
-          <span className="text-[10px] font-black uppercase tracking-widest">Histórico Trabalho</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Histórico</span>
           {activeTab === 'historico' && <div className="absolute bottom-0 w-full h-[4px] bg-slate-600"></div>}
         </button>
       </nav>
@@ -221,7 +214,7 @@ const App = () => {
             
             {/* CARD DO CRONÔMETRO */}
             <div className={`bg-[#334155] rounded-[2.5rem] p-10 text-center shadow-2xl border border-white/10 relative transition-all duration-500 ${isAlarmActive ? 'ring-[12px] ring-red-500 animate-pulse' : ''}`}>
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">GESTÃO DE PRODUÇÃO</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">PRODUÇÃO EM CURSO</span>
                <div className="text-7xl font-black font-mono text-white tracking-tighter my-2">
                   {formatT(data.seconds)}
                </div>
@@ -230,7 +223,7 @@ const App = () => {
                </div>
                
                <div className="bg-black/20 rounded-2xl py-3 px-5 mb-10 flex items-center justify-center gap-4 border border-white/10">
-                  <span className="text-[9px] font-black text-slate-300 uppercase">Estipular Meta (Min):</span>
+                  <span className="text-[9px] font-black text-slate-300 uppercase">Alertar em (Min):</span>
                   <input type="number" className="w-16 bg-white/10 text-center text-white font-black rounded-lg outline-none border border-white/20 p-1.5 text-xs" value={data.goalMinutes} onChange={e => setData({...data, goalMinutes: parseInt(e.target.value) || 0})} />
                </div>
 
@@ -253,7 +246,7 @@ const App = () => {
                </div>
             </div>
 
-            {/* ENTRADA DE DADOS */}
+            {/* FORMULÁRIO */}
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200 space-y-5">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -280,12 +273,12 @@ const App = () => {
         {activeTab === 'historico' && (
           <div className="space-y-8 animate-in pb-20">
             
-            {/* CALCULADORA DE SOMA UNIFICADA (IMAGEM 2) */}
+            {/* CALCULADORA DE SOMA UNIFICADA (LAYOUT IMAGEM 2) */}
             {selectedIds.length > 0 && (
               <div className="bg-white rounded-xl border border-slate-400 shadow-2xl overflow-hidden mb-12 animate-in">
                  <div className="header-premium py-6">
                     <h2 className="text-xl font-black italic tracking-tighter uppercase">{BRAND_NAME}</h2>
-                    <p className="text-[9px] text-slate-200 mt-1 uppercase tracking-widest">Calculadora de Soma Unificada</p>
+                    <p className="text-[9px] text-slate-200 mt-1 uppercase tracking-widest">Relatório de Soma Unificada</p>
                  </div>
                  
                  <div className="p-3 overflow-x-auto">
@@ -295,7 +288,6 @@ const App = () => {
                              <th>Projeto</th>
                              <th>Cliente</th>
                              <th>Data</th>
-                             <th>Valor Hora</th>
                              <th>Tempo</th>
                              <th>Valor Total</th>
                           </tr>
@@ -306,13 +298,12 @@ const App = () => {
                                 <td>{p.project}</td>
                                 <td className="text-cyan-premium font-black">{p.client}</td>
                                 <td className="text-[10px]">{p.date}</td>
-                                <td>{cur(p.rate)}</td>
                                 <td className="font-black text-cyan-premium">{formatT(p.time)}</td>
                                 <td className="text-green-premium font-black">{cur(p.total)}</td>
                              </tr>
                           ))}
                           <tr className="bg-slate-50 border-t-2 border-slate-300">
-                             <td colSpan={4} className="text-right font-black py-5 uppercase text-[10px]">Soma Acumulada Selecionada:</td>
+                             <td colSpan={3} className="text-right font-black py-5 uppercase text-[10px]">Totais Selecionados:</td>
                              <td className="font-black text-cyan-premium text-base">{formatT(sumSeconds)}</td>
                              <td className="font-black text-green-premium text-base">{cur(sumTotal)}</td>
                           </tr>
@@ -321,18 +312,18 @@ const App = () => {
                  </div>
 
                  <div className="grid grid-cols-3 gap-2 p-3 bg-slate-100 border-t border-slate-300">
-                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(generateSumText())}`)} className="bg-[#27ae60] text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2"><i className="fab fa-whatsapp"></i> Zap</button>
-                    <button onClick={() => exportWord(generateSumText(), 'Relatorio_Unificado')} className="bg-[#3498db] text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2"><i className="fas fa-file-word"></i> Word</button>
+                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getSumText())}`)} className="bg-[#27ae60] text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2"><i className="fab fa-whatsapp"></i> Zap</button>
+                    <button onClick={() => exportWord(getSumText(), 'Relatorio_Soma')} className="bg-[#3498db] text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-md flex items-center justify-center gap-2"><i className="fas fa-file-word"></i> Word</button>
                     <button onClick={() => setSelectedIds([])} className="bg-slate-500 text-white p-3 rounded-xl text-[10px] font-black uppercase shadow-md">Limpar</button>
                  </div>
               </div>
             )}
 
-            {/* LISTAGEM DOS RELATÓRIOS INDIVIDUAIS (IMAGEM 1) */}
+            {/* LISTAGEM DOS RELATÓRIOS INDIVIDUAIS (LAYOUT IMAGEM 1) */}
             <div className="space-y-12">
               {data.history.map((h: any) => (
                 <div key={String(h.id)} className="relative">
-                  {/* CHECKBOX DE SELEÇÃO */}
+                  {/* QUADRINHO DE SELEÇÃO */}
                   <div className="absolute top-4 left-[-26px] z-10">
                     <input type="checkbox" className="cb-custom" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
                   </div>
@@ -360,11 +351,11 @@ const App = () => {
                       </table>
 
                       <div className="grid grid-cols-4 gap-3 mt-8 border-t border-slate-100 pt-6">
-                        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(generateIndividualText(h))}`)} className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-emerald-50 text-[#27ae60] transition-colors">
+                        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getIndividualText(h))}`)} className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-emerald-50 text-[#27ae60] transition-colors">
                           <i className="fab fa-whatsapp text-2xl"></i>
                           <span className="text-[8px] font-black uppercase mt-2">Zap</span>
                         </button>
-                        <button onClick={() => exportWord(generateIndividualText(h), `Relatorio_${h.project}`)} className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-blue-50 text-[#3498db] transition-colors">
+                        <button onClick={() => exportWord(getIndividualText(h), `Relatorio_${h.project}`)} className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-blue-50 text-[#3498db] transition-colors">
                           <i className="fas fa-file-word text-2xl"></i>
                           <span className="text-[8px] font-black uppercase mt-2">Word</span>
                         </button>
@@ -388,7 +379,7 @@ const App = () => {
 
       <footer className="p-4 bg-white border-t border-slate-300 text-center z-10 shadow-inner">
          <div className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] leading-relaxed">
-           LUCANO DESIGNER3D V25.0 - GESTÃO PREMIUM AI
+           LUCANO DESIGNER3D V26.0 - SISTEMA PROFISSIONAL
          </div>
       </footer>
     </div>
