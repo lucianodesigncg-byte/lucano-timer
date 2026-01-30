@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUCANO DESIGNER3D - V34 FINAL</title>
+    <title>LUCANO DESIGNER3D - V37 FINAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="importmap">
@@ -32,7 +32,6 @@
 
         #root { height: 100%; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
         .animate-in {
@@ -45,16 +44,15 @@
         }
 
         @keyframes shake {
-          0%, 100% { transform: rotate(0deg); }
-          25% { transform: rotate(10deg); }
-          75% { transform: rotate(-10deg); }
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
         }
 
         .animate-shake {
           animation: shake 0.2s ease-in-out infinite;
         }
 
-        /* Melhorias nos inputs de range */
         input[type=range]::-webkit-slider-thumb {
           -webkit-appearance: none;
           height: 24px;
@@ -73,7 +71,6 @@
           border-radius: 4px;
         }
 
-        /* Estilo para checkboxes nativos ficarem mais bonitos */
         .sr-only {
           position: absolute;
           width: 1px;
