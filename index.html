@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUCANO DESIGNER3D - V37 FINAL</title>
+    <title>LUCANO DESIGNER3D - V40 FINAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="importmap">
@@ -49,8 +49,17 @@
           75% { transform: translateX(5px); }
         }
 
+        @keyframes spinSlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
         .animate-shake {
           animation: shake 0.2s ease-in-out infinite;
+        }
+
+        .animate-spin-slow {
+          animation: spinSlow 8s linear infinite;
         }
 
         input[type=range]::-webkit-slider-thumb {
