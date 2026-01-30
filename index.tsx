@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 
 const BRAND_NAME = 'LUCANO DESIGNER3D';
-const SUBTITLE = 'TEMPO TRABALHADO NESSES PROJETOS';
-const CONTACT_INFO = 'RUA BETÂNIA N392 BAIRRO OLIVEIRA\nWhatsApp: 74 9 91108629';
+const ADDRESS = 'Rua Betânia N392 Bairro Oliveira';
+const CONTACT = 'Tel / WhatsApp: 74 9 91108629';
 
+// Função de áudio para o alarme
 const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-    const trigger = (freq: number, dur: number, typeWave: OscillatorType = 'sine', vol = 0.1) => {
+    const trigger = (freq: number, dur: number, typeWave: OscillatorType = 'sine', vol = 0.15) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = typeWave;
@@ -25,8 +26,8 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
     if (type === 'stop') trigger(440, 0.1);
     if (type === 'success') { trigger(523, 0.2); setTimeout(() => trigger(659, 0.2), 100); }
     if (type === 'alarm') { 
-      trigger(1000, 0.1, 'square', 0.15); 
-      setTimeout(() => trigger(1000, 0.1, 'square', 0.15), 200);
+      trigger(1000, 0.1, 'square', 0.2); 
+      setTimeout(() => trigger(1000, 0.1, 'square', 0.2), 200);
     }
   } catch (e) {}
 };
@@ -34,7 +35,7 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
 const App = () => {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('lucano_v18_final');
+      const saved = localStorage.getItem('lucano_v20_prod');
       if (!saved) return { client: '', project: '', notes: '', rate: 15, seconds: 0, active: false, goalMinutes: 1, history: [] };
       const parsed = JSON.parse(saved);
       return {
@@ -57,11 +58,13 @@ const App = () => {
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   
   const timerRef = useRef<any>(null);
+  const alarmIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    localStorage.setItem('lucano_v18_final', JSON.stringify(data));
+    localStorage.setItem('lucano_v20_prod', JSON.stringify(data));
   }, [data]);
 
+  // Cronômetro
   useEffect(() => {
     if (data.active) {
       timerRef.current = setInterval(() => {
@@ -73,14 +76,26 @@ const App = () => {
     return () => clearInterval(timerRef.current);
   }, [data.active]);
 
-  // REQ 01 & 04: META ALCANÇADA -> SALVA, ZERA E PULA
+  // Regra de Meta Alcançada
   useEffect(() => {
     const goalSec = (data.goalMinutes || 0) * 60;
     if (data.active && goalSec > 0 && data.seconds >= goalSec) {
-      handleSave(true);
-      playSound('alarm');
+      // Quando termina o tempo: para o cronômetro e ativa o alarme contínuo
+      setData(prev => ({ ...prev, active: false, seconds: goalSec }));
+      setIsAlarmActive(true);
     }
   }, [data.seconds, data.active, data.goalMinutes]);
+
+  // Alarme contínuo (loop até salvar)
+  useEffect(() => {
+    if (isAlarmActive) {
+      playSound('alarm');
+      alarmIntervalRef.current = setInterval(() => playSound('alarm'), 2500);
+    } else {
+      clearInterval(alarmIntervalRef.current);
+    }
+    return () => clearInterval(alarmIntervalRef.current);
+  }, [isAlarmActive]);
 
   const formatT = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -91,36 +106,36 @@ const App = () => {
 
   const cur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const handleSave = (fromMeta = false) => {
-    const elapsed = data.seconds;
-    if (elapsed < 1 && !fromMeta) return;
+  // SALVAR PROJETO (Req: Para o alarme e gera relatório)
+  const handleSave = () => {
+    if (data.seconds < 1) return alert("Nenhum tempo registrado para salvar.");
 
     const now = new Date();
-    const endTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const startTimeDate = new Date(now.getTime() - elapsed * 1000);
-    const startTime = startTimeDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const endTimeStr = now.toLocaleString('pt-BR');
+    const startTimeDate = new Date(now.getTime() - data.seconds * 1000);
+    const startTimeStr = startTimeDate.toLocaleString('pt-BR');
 
     const entry = {
       id: Date.now().toString(),
       project: String(data.project || "SEM NOME"),
       client: String(data.client || "SEM CLIENTE"),
       notes: String(data.notes || ""),
-      time: Number(elapsed),
+      time: Number(data.seconds),
       rate: Number(data.rate),
-      total: Number((elapsed / 3600) * data.rate),
+      total: Number((data.seconds / 3600) * data.rate),
       date: now.toLocaleDateString('pt-BR'),
-      startTime,
-      endTime
+      startTime: startTimeStr,
+      endTime: endTimeStr
     };
 
     setData((p: any) => ({ 
       ...p, 
-      seconds: 0, 
+      seconds: 0, // Zera o cronômetro
       active: false, 
       history: [entry, ...p.history] 
     }));
     
-    setIsAlarmActive(false);
+    setIsAlarmActive(false); // Para o alarme
     setActiveTab('historico');
     playSound('success');
   };
@@ -132,7 +147,7 @@ const App = () => {
       client: String(h.client),
       notes: String(h.notes),
       rate: Number(h.rate),
-      seconds: Number(h.time),
+      seconds: 0, // Inicia do zero ao retomar novo ciclo
       active: false
     }));
     setActiveTab('controle');
@@ -145,213 +160,234 @@ const App = () => {
 
   const selectedProjects = data.history.filter((h: any) => selectedIds.includes(h.id));
   const sumTotal = selectedProjects.reduce((acc: number, h: any) => acc + h.total, 0);
+  const sumSeconds = selectedProjects.reduce((acc: number, h: any) => acc + h.time, 0);
 
-  // REQ 03 & 06: RELATÓRIO INDIVIDUAL E CABEÇALHO
-  const exportReport = (h: any, type: 'wa' | 'doc' | 'txt') => {
-    const header = `${BRAND_NAME}\n${SUBTITLE}\n${CONTACT_INFO}\n------------------------------\n`;
-    const body = `PROJETO: ${h.project}\nCLIENTE: ${h.client}\nDATA: ${h.date}\nINÍCIO: ${h.startTime} | FIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTOTAL: ${cur(h.total)}\n------------------------------\nNOTAS: ${h.notes || '-'}`;
-    const text = header + body;
-
-    if (type === 'wa') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    } else {
-      const blob = new Blob([text], { type: type === 'txt' ? 'text/plain' : 'application/msword' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Relatorio_${h.project}.${type === 'txt' ? 'txt' : 'doc'}`;
-      a.click();
-    }
+  // Formatação de texto para exportação
+  const getIndividualText = (h: any) => {
+    return `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO INDIVIDUAL DE PRODUÇÃO\n\nCLIENTE: ${h.client}\nPROJETO: ${h.project}\nDATA INÍCIO: ${h.startTime}\nDATA FIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTEMPO TOTAL: ${formatT(h.time)}\nVALOR TOTAL: ${cur(h.total)}\n\nNOTAS: ${h.notes || '-'}`;
   };
 
-  // REQ 06: RELATÓRIO SOMA COM TABELA
-  const exportSum = (type: 'wa' | 'doc' | 'txt') => {
-    if (selectedProjects.length === 0) return;
-    const header = `${BRAND_NAME}\n${SUBTITLE}\n${CONTACT_INFO}\n\n`;
-    let table = `TABELA DE PROJETOS:\n`;
-    table += `PROJETO | CLIENTE | INÍCIO | FIM | TOTAL\n`;
-    table += `--------------------------------------------------\n`;
-    
-    selectedProjects.forEach((p: any) => {
-      table += `${p.project} | ${p.client} | ${p.startTime} | ${p.endTime} | ${cur(p.total)}\n`;
-    });
-    
-    table += `--------------------------------------------------\n`;
-    table += `VALOR TOTAL ACUMULADO: ${cur(sumTotal)}`;
-    
-    const text = header + table;
-
-    if (type === 'wa') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    } else {
-      const blob = new Blob([text], { type: type === 'txt' ? 'text/plain' : 'application/msword' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Soma_Trabalho_Lucano.${type === 'txt' ? 'txt' : 'doc'}`;
-      a.click();
-    }
+  const getSumText = () => {
+    let t = `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO DE SOMA UNIFICADA\n\nPROJETO | CLIENTE | DATA | TOTAL\n`;
+    selectedProjects.forEach(p => t += `${p.project} | ${p.client} | ${p.date} | ${cur(p.total)}\n`);
+    t += `\nSOMA ACUMULADA: ${formatT(sumSeconds)} | ${cur(sumTotal)}`;
+    return t;
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#f8fafc] text-slate-800 font-sans overflow-hidden select-none">
+    <div className="flex flex-col h-screen w-full bg-[#f1f5f9] text-slate-800 font-sans overflow-hidden select-none">
       
-      <header className="bg-[#2c3e50] pt-7 pb-5 text-center shadow-lg z-30">
-        <h1 className="text-2xl font-black italic tracking-wider text-white uppercase leading-none">{BRAND_NAME}</h1>
-        <p className="text-[7.5px] tracking-[0.3em] text-cyan-400 font-bold opacity-80 mt-1 uppercase">Sincronizador de Projetos 3D</p>
+      {/* HEADER PRINCIPAL */}
+      <header className="header-premium shadow-lg z-30">
+        <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">{BRAND_NAME}</h1>
+        <div className="text-[9px] font-bold text-slate-200 mt-1">
+          {ADDRESS}<br />
+          {CONTACT}
+        </div>
       </header>
 
-      <nav className="flex bg-white border-b border-slate-200 z-20 shadow-sm">
-        <button onClick={() => setActiveTab('controle')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'controle' ? 'text-cyan-600' : 'text-slate-400'}`}>
+      {/* ABAS */}
+      <nav className="flex bg-white border-b border-slate-300 z-20">
+        <button onClick={() => setActiveTab('controle')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'controle' ? 'text-slate-900' : 'text-slate-400'}`}>
           <i className="fas fa-play-circle text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest text-center">Controle Ativo</span>
-          {activeTab === 'controle' && <div className="absolute bottom-0 w-[60%] h-[3px] bg-cyan-600 rounded-t-full mx-auto"></div>}
+          <span className="text-[9px] font-black uppercase tracking-widest">Controle</span>
+          {activeTab === 'controle' && <div className="absolute bottom-0 w-full h-[3px] bg-slate-600"></div>}
         </button>
-        <button onClick={() => setActiveTab('historico')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'historico' ? 'text-cyan-600' : 'text-slate-400'}`}>
-          <i className="fas fa-history text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest text-center">Histórico e Relatório</span>
-          {activeTab === 'historico' && <div className="absolute bottom-0 w-[60%] h-[3px] bg-cyan-600 rounded-t-full mx-auto"></div>}
+        <button onClick={() => setActiveTab('historico')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'historico' ? 'text-slate-900' : 'text-slate-400'}`}>
+          <i className="fas fa-file-invoice-dollar text-xl"></i>
+          <span className="text-[9px] font-black uppercase tracking-widest">Relatórios</span>
+          {activeTab === 'historico' && <div className="absolute bottom-0 w-full h-[3px] bg-slate-600"></div>}
         </button>
       </nav>
 
-      <main className="flex-1 overflow-y-auto px-6 py-4 no-scrollbar bg-[#f8fafc]">
+      <main className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
         
         {activeTab === 'controle' && (
-          <div className="space-y-5 animate-in slide-in-from-bottom-3">
+          <div className="space-y-4 animate-in">
             
-            {/* DISPLAY CRONOMETRO */}
-            <div className={`bg-[#34495e] rounded-[2.5rem] p-8 text-center shadow-2xl border border-white/5 relative transition-all duration-500`}>
-               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] block mb-2">Monitorando Produção</span>
-               <div className="text-6xl font-black font-mono text-white tracking-tighter my-1">
+            {/* DISPLAY DE TEMPO */}
+            <div className={`bg-[#334155] rounded-[2.5rem] p-8 text-center shadow-xl border border-white/10 relative transition-all duration-500 ${isAlarmActive ? 'ring-8 ring-red-500 animate-pulse' : ''}`}>
+               <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">PRODUÇÃO ATIVA</span>
+               <div className="text-6xl font-black font-mono text-white tracking-tighter my-2">
                   {formatT(data.seconds)}
                </div>
-               <div className="text-2xl font-black text-[#2ecc71] italic mt-1 mb-6">
+               <div className="text-2xl font-black text-[#2ecc71] italic mb-6">
                  {cur((data.seconds / 3600) * data.rate)}
                </div>
                
-               <div className="bg-black/20 rounded-2xl py-2 px-4 mb-8 flex items-center justify-center gap-3 border border-white/5">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Estipular Meta</span>
-                  <input type="number" className="w-14 bg-white/10 text-center text-white font-black rounded-lg outline-none border border-white/20 p-1.5 text-xs" value={data.goalMinutes} onChange={e => setData({...data, goalMinutes: parseInt(e.target.value) || 0})} />
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Minutos</span>
+               <div className="bg-black/20 rounded-2xl py-3 px-4 mb-8 flex items-center justify-center gap-3 border border-white/5">
+                  <span className="text-[8px] font-black text-slate-300 uppercase">Estipular Meta (Min):</span>
+                  <input type="number" className="w-16 bg-white/10 text-center text-white font-black rounded-lg outline-none border border-white/20 p-1 text-xs" value={data.goalMinutes} onChange={e => setData({...data, goalMinutes: parseInt(e.target.value) || 0})} />
                </div>
 
                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <button onClick={() => { setData({...data, active: true}); playSound('start'); }} className="bg-[#27ae60] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
+                  <button onClick={() => { setData({...data, active: true}); playSound('start'); setIsAlarmActive(false); }} className="bg-[#27ae60] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-lg active:scale-95">
                     <i className="fas fa-play"></i> INICIAR
                   </button>
-                  <button onClick={() => { setData({...data, active: false}); playSound('stop'); }} className="bg-[#f1c40f] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
+                  <button onClick={() => { setData({...data, active: false}); playSound('stop'); }} className="bg-[#f1c40f] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-lg active:scale-95">
                     <i className="fas fa-pause"></i> PAUSAR
                   </button>
                </div>
                
                <div className="grid grid-cols-2 gap-3">
-                  {/* REQ 01: SALVAR PROJETO AGORA */}
-                  <button onClick={() => handleSave(false)} className="bg-[#e74c3c] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
-                    <i className="fas fa-check"></i> SALVAR PROJETO
+                  <button onClick={handleSave} className="bg-[#e74c3c] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 border-2 border-white/20">
+                    <i className="fas fa-save"></i> SALVAR PROJETO
                   </button>
-                  {/* REQ 05: CONTINUAR PROJETO */}
-                  <button onClick={() => data.history[0] && resumeHistory(data.history[0])} className="bg-[#3498db] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
-                    <i className="fas fa-undo"></i> CONTINUAR PROJETO
+                  <button onClick={() => data.history[0] && resumeHistory(data.history[0])} className="bg-[#3498db] text-white py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-3 shadow-xl active:scale-95">
+                    <i className="fas fa-undo"></i> CONTINUAR TRABALHO
                   </button>
                </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] p-7 shadow-md border border-slate-100 space-y-5">
-               <div className="grid grid-cols-2 gap-5">
+            {/* FORMULÁRIO */}
+            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 space-y-4">
+               <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Cliente</label>
-                    <input className="w-full bg-[#f8fafc] p-4 rounded-2xl border border-slate-100 font-black uppercase text-xs" placeholder="CLIENTE..." value={data.client} onChange={e => setData({...data, client: e.target.value})} />
+                    <input className="w-full bg-[#f8fafc] p-3 rounded-xl border border-slate-200 font-black uppercase text-xs" placeholder="CLIENTE..." value={data.client} onChange={e => setData({...data, client: e.target.value})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Projeto</label>
-                    <input className="w-full bg-[#f8fafc] p-4 rounded-2xl border border-slate-100 font-black uppercase text-xs" placeholder="AMBIENTE..." value={data.project} onChange={e => setData({...data, project: e.target.value})} />
+                    <input className="w-full bg-[#f8fafc] p-3 rounded-xl border border-slate-200 font-black uppercase text-xs" placeholder="AMBIENTE..." value={data.project} onChange={e => setData({...data, project: e.target.value})} />
                   </div>
                </div>
                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Notas do Ambiente</label>
-                  <textarea className="w-full bg-[#f8fafc] p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 font-medium h-20 outline-none resize-none" placeholder="Detalhes técnicos aqui..." value={data.notes} onChange={e => setData({...data, notes: e.target.value})} />
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Notas Técnicas Adicionais</label>
+                  <textarea className="w-full bg-[#f8fafc] p-3 rounded-xl border border-slate-200 text-[10px] text-slate-600 font-medium h-20 outline-none resize-none" placeholder="Detalhes do projeto..." value={data.notes} onChange={e => setData({...data, notes: e.target.value})} />
                </div>
-               <div className="bg-[#f8fafc] p-6 rounded-[2rem] border border-slate-100 text-center">
-                  <span className="text-[9px] font-black text-cyan-600 italic uppercase block mb-3">Valor da Hora Trabalhada</span>
-                  <div className="flex items-center justify-between mb-4 px-2">
-                     <span className="text-3xl font-black italic">R$ {Number(data.rate).toFixed(2).replace('.', ',')}</span>
-                     <input type="number" className="w-20 bg-white border border-slate-200 text-center font-black p-3 rounded-xl text-sm" value={data.rate} onChange={e => setData({...data, rate: parseFloat(e.target.value) || 0})} />
+               <div className="bg-[#f8fafc] p-4 rounded-2xl border border-slate-200 text-center">
+                  <span className="text-[8px] font-black text-cyan-600 uppercase block mb-2 tracking-widest">Valor da Hora Trabalhada</span>
+                  <div className="flex items-center justify-between mb-2">
+                     <span className="text-2xl font-black italic">R$ {Number(data.rate).toFixed(2).replace('.', ',')}</span>
+                     <input type="number" className="w-16 bg-white border border-slate-300 text-center font-black p-2 rounded-lg text-xs" value={data.rate} onChange={e => setData({...data, rate: parseFloat(e.target.value) || 0})} />
                   </div>
-                  <input type="range" min="1" max="500" className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600 custom-range" value={data.rate} onChange={e => setData({...data, rate: parseInt(e.target.value)})} />
+                  <input type="range" min="1" max="500" className="w-full h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-slate-600" value={data.rate} onChange={e => setData({...data, rate: parseInt(e.target.value)})} />
                </div>
             </div>
           </div>
         )}
 
         {activeTab === 'historico' && (
-          <div className="space-y-4 animate-in slide-in-from-right-3">
+          <div className="space-y-8 animate-in pb-10">
             
-            {/* REQ 06: CALCULADORA DE SOMA COMPACTA */}
+            {/* RELATÓRIO DE SOMA UNIFICADA (Req: Imagem 2) */}
             {selectedIds.length > 0 && (
-              <div className="bg-cyan-600 rounded-3xl p-5 shadow-xl text-center sticky top-0 z-40 animate-in zoom-in-95">
-                 <span className="text-[8px] font-black text-cyan-100 block mb-1 uppercase tracking-widest">SOMA DOS SELECIONADOS ({selectedIds.length})</span>
-                 <div className="text-2xl font-black text-white mb-3">{cur(sumTotal)}</div>
-                 <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => exportSum('wa')} className="bg-emerald-500 text-white p-2 rounded-xl text-[8px] font-black uppercase shadow-md"><i className="fab fa-whatsapp"></i> Zap</button>
-                    <button onClick={() => exportSum('doc')} className="bg-blue-500 text-white p-2 rounded-xl text-[8px] font-black uppercase shadow-md"><i className="fas fa-file-word"></i> Word</button>
-                    <button onClick={() => exportSum('txt')} className="bg-slate-700 text-white p-2 rounded-xl text-[8px] font-black uppercase shadow-md"><i className="fas fa-file-alt"></i> Bloco</button>
+              <div className="bg-white rounded-xl border border-slate-400 shadow-2xl overflow-hidden mb-10">
+                 <div className="header-premium py-4">
+                    <h2 className="text-lg font-black italic">{BRAND_NAME}</h2>
+                    <p className="text-[8px] text-slate-200">{ADDRESS}</p>
+                    <p className="text-[8px] text-slate-200">{CONTACT}</p>
+                 </div>
+                 
+                 <div className="p-3 text-center border-b bg-slate-50">
+                    <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest">Relatório de Soma Unificada</h3>
+                 </div>
+
+                 <div className="overflow-x-auto">
+                    <table className="sum-table">
+                       <thead>
+                          <tr>
+                             <th>Projeto</th>
+                             <th>Cliente</th>
+                             <th>Data Início</th>
+                             <th>Valor Hora</th>
+                             <th>Tempo</th>
+                             <th>Valor Total</th>
+                          </tr>
+                       </thead>
+                       <tbody>
+                          {selectedProjects.map(p => (
+                             <tr key={p.id}>
+                                <td>{p.project}</td>
+                                <td className="text-cyan-600">{p.client}</td>
+                                <td>{p.startTime.split(',')[0]}</td>
+                                <td>{cur(p.rate)}</td>
+                                <td className="font-black">{formatT(p.time)}</td>
+                                <td className="text-green-600">{cur(p.total)}</td>
+                             </tr>
+                          ))}
+                          <tr className="bg-slate-50 border-t-2 border-slate-300">
+                             <td colSpan={4} className="text-right font-black py-4 uppercase text-[9px]">Soma Acumulada Selecionada:</td>
+                             <td className="font-black text-cyan-600 text-sm">{formatT(sumSeconds)}</td>
+                             <td className="font-black text-green-600 text-sm">{cur(sumTotal)}</td>
+                          </tr>
+                       </tbody>
+                    </table>
+                 </div>
+
+                 <div className="grid grid-cols-3 gap-1 p-2 bg-slate-100 border-t border-slate-300">
+                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getSumText())}`)} className="bg-emerald-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fab fa-whatsapp"></i> Whatsapp</button>
+                    <button onClick={() => alert("Relatório salvo no Histórico do Plugin")} className="bg-blue-600 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fas fa-save"></i> Salvar Relatório</button>
+                    <button onClick={() => setSelectedIds([])} className="bg-slate-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm">Limpar Seleção</button>
                  </div>
               </div>
             )}
 
-            {data.history.map((h: any) => (
-              <div key={String(h.id)} className="bg-white p-5 rounded-[2rem] border border-slate-200 shadow-md flex items-start gap-4 hover:border-cyan-200 transition-all">
-                {/* REQ 02: QUADRINHO DE SELEÇÃO */}
-                <input type="checkbox" className="cb-custom mt-1" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
-                
-                <div className="flex-1 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 pr-1">
-                      <h4 className="font-black text-xs text-slate-800 uppercase truncate tracking-tight">{String(h.project)}</h4>
-                      <p className="text-[9px] font-bold text-cyan-600 uppercase mt-0.5">{String(h.client)}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="text-[7px] text-slate-400 font-black"><i className="fas fa-calendar mr-1"></i> {String(h.date)}</span>
-                        <span className="text-[7px] text-slate-400 font-black"><i className="fas fa-clock mr-1"></i> {h.startTime}-{h.endTime}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[#27ae60] font-black text-lg">{cur(Number(h.total))}</div>
-                      <button onClick={() => resumeHistory(h)} className="mt-1 text-[7px] font-black uppercase text-cyan-600 border border-cyan-100 bg-cyan-50 px-3 py-1.5 rounded-lg">RETOMAR</button>
-                    </div>
+            {/* RELATÓRIO INDIVIDUAL (Req: Imagem 1) */}
+            <div className="space-y-10">
+              {data.history.map((h: any) => (
+                <div key={String(h.id)} className="relative group">
+                  <div className="absolute top-4 left-[-20px] z-10">
+                    <input type="checkbox" className="cb-custom" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-50">
-                    <button onClick={() => exportReport(h, 'wa')} className="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-emerald-50">
-                      <i className="fab fa-whatsapp text-emerald-500 text-xs mb-1"></i>
-                      <span className="text-[7px] font-black text-slate-500">ZAP</span>
-                    </button>
-                    <button onClick={() => exportReport(h, 'doc')} className="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-blue-50">
-                      <i className="fas fa-file-word text-blue-500 text-xs mb-1"></i>
-                      <span className="text-[7px] font-black text-slate-500">WORD</span>
-                    </button>
-                    <button onClick={() => exportReport(h, 'txt')} className="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-slate-50">
-                      <i className="fas fa-file-alt text-slate-400 text-xs mb-1"></i>
-                      <span className="text-[7px] font-black text-slate-500">BLOCO</span>
-                    </button>
-                    <button onClick={() => confirm("Apagar?") && setData((p:any) => ({...p, history: p.history.filter((x:any) => x.id !== h.id)}))} className="flex flex-col items-center justify-center p-2 rounded-xl hover:bg-red-50">
-                      <i className="fas fa-trash text-red-500 text-xs mb-1"></i>
-                      <span className="text-[7px] font-black text-slate-500">DELETAR</span>
-                    </button>
+                  <div className="bg-white rounded-xl border border-slate-400 shadow-md overflow-hidden">
+                    <div className="header-premium py-5">
+                      <h2 className="text-xl font-black italic tracking-tighter uppercase">{BRAND_NAME}</h2>
+                      <p className="text-[8px] text-slate-200 mt-1">{ADDRESS}</p>
+                      <p className="text-[8px] text-slate-200">{CONTACT}</p>
+                    </div>
+                    
+                    <div className="p-3 text-center border-b border-slate-100 bg-slate-50">
+                      <h3 className="font-black text-[10px] text-slate-500 uppercase tracking-widest">Relatório Individual de Produção</h3>
+                    </div>
+                    
+                    <div className="p-4">
+                      <table className="report-table">
+                        <tbody>
+                          <tr><td>Cliente:</td><td>{h.client}</td></tr>
+                          <tr><td>Projeto:</td><td>{h.project}</td></tr>
+                          <tr><td>Data Início:</td><td>{h.startTime}</td></tr>
+                          <tr><td>Data Fim:</td><td>{h.endTime}</td></tr>
+                          <tr><td>Valor Hora:</td><td>{cur(h.rate)}</td></tr>
+                          <tr><td className="text-cyan-premium">Tempo Total:</td><td className="text-cyan-premium">{formatT(h.time)}</td></tr>
+                          <tr className="bg-green-50"><td className="text-green-premium">Valor Total:</td><td className="text-green-premium">{cur(h.total)}</td></tr>
+                        </tbody>
+                      </table>
+
+                      {h.notes && (
+                        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <span className="text-[8px] font-black text-slate-400 block mb-1 uppercase">Notas Técnicas Adicionais:</span>
+                          <p className="text-[10px] text-slate-600 italic leading-relaxed">{h.notes}</p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-5 gap-2 mt-5 border-t border-slate-100 pt-4">
+                        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getIndividualText(h))}`)} className="flex flex-col items-center p-2 rounded-xl hover:bg-emerald-50 text-emerald-600">
+                          <i className="fab fa-whatsapp text-lg"></i>
+                          <span className="text-[7px] font-black uppercase mt-1">Zap</span>
+                        </button>
+                        <button onClick={() => resumeHistory(h)} className="flex flex-col items-center p-2 rounded-xl hover:bg-cyan-50 text-cyan-600">
+                          <i className="fas fa-redo text-lg"></i>
+                          <span className="text-[7px] font-black uppercase mt-1">Retomar</span>
+                        </button>
+                        <button onClick={() => confirm("Apagar?") && setData((p:any) => ({...p, history: p.history.filter((x:any) => x.id !== h.id)}))} className="flex flex-col items-center p-2 rounded-xl hover:bg-red-50 text-red-500">
+                          <i className="fas fa-trash text-lg"></i>
+                          <span className="text-[7px] font-black uppercase mt-1">Excluir</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </main>
 
-      <footer className="p-4 bg-white border-t border-slate-100 text-center z-10">
-         <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
-           LUCANO DESIGNER3D V18.0 PREMIUM
-           <br />
-           {CONTACT_INFO.split('\n')[0]}
-           <br />
-           <span className="text-emerald-500">{CONTACT_INFO.split('\n')[1]}</span>
+      <footer className="p-3 bg-white border-t border-slate-300 text-center z-10 shadow-inner">
+         <div className="text-[7px] font-black text-slate-400 uppercase tracking-[0.3em] leading-relaxed">
+           LUCANO DESIGNER3D V19.0 - SISTEMA PROFISSIONAL
          </div>
       </footer>
     </div>
