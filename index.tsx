@@ -5,11 +5,11 @@ const BRAND_NAME = 'LUCANO DESIGNER3D';
 const ADDRESS = 'Rua Betânia N392 Bairro Oliveira';
 const CONTACT = 'Tel / WhatsApp: 74 9 91108629';
 
-// Função de áudio para o alarme
+// Sons para alarme e notificações
 const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-    const trigger = (freq: number, dur: number, typeWave: OscillatorType = 'sine', vol = 0.15) => {
+    const trigger = (freq: number, dur: number, typeWave: OscillatorType = 'sine', vol = 0.2) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = typeWave;
@@ -26,8 +26,8 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
     if (type === 'stop') trigger(440, 0.1);
     if (type === 'success') { trigger(523, 0.2); setTimeout(() => trigger(659, 0.2), 100); }
     if (type === 'alarm') { 
-      trigger(1000, 0.1, 'square', 0.2); 
-      setTimeout(() => trigger(1000, 0.1, 'square', 0.2), 200);
+      trigger(1000, 0.1, 'square', 0.25); 
+      setTimeout(() => trigger(1000, 0.1, 'square', 0.25), 200);
     }
   } catch (e) {}
 };
@@ -35,7 +35,7 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
 const App = () => {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('lucano_v20_prod');
+      const saved = localStorage.getItem('lucano_v21_final');
       if (!saved) return { client: '', project: '', notes: '', rate: 15, seconds: 0, active: false, goalMinutes: 1, history: [] };
       const parsed = JSON.parse(saved);
       return {
@@ -61,10 +61,10 @@ const App = () => {
   const alarmIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    localStorage.setItem('lucano_v20_prod', JSON.stringify(data));
+    localStorage.setItem('lucano_v21_final', JSON.stringify(data));
   }, [data]);
 
-  // Cronômetro
+  // Lógica do Cronômetro
   useEffect(() => {
     if (data.active) {
       timerRef.current = setInterval(() => {
@@ -76,17 +76,16 @@ const App = () => {
     return () => clearInterval(timerRef.current);
   }, [data.active]);
 
-  // Regra de Meta Alcançada
+  // Regra de Meta: Ativa alarme e para contagem
   useEffect(() => {
     const goalSec = (data.goalMinutes || 0) * 60;
     if (data.active && goalSec > 0 && data.seconds >= goalSec) {
-      // Quando termina o tempo: para o cronômetro e ativa o alarme contínuo
       setData(prev => ({ ...prev, active: false, seconds: goalSec }));
       setIsAlarmActive(true);
     }
   }, [data.seconds, data.active, data.goalMinutes]);
 
-  // Alarme contínuo (loop até salvar)
+  // Alarme contínuo
   useEffect(() => {
     if (isAlarmActive) {
       playSound('alarm');
@@ -106,9 +105,9 @@ const App = () => {
 
   const cur = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // SALVAR PROJETO (Req: Para o alarme e gera relatório)
+  // SALVAR PROJETO
   const handleSave = () => {
-    if (data.seconds < 1) return alert("Nenhum tempo registrado para salvar.");
+    if (data.seconds < 1) return alert("Nada para salvar.");
 
     const now = new Date();
     const endTimeStr = now.toLocaleString('pt-BR');
@@ -130,16 +129,17 @@ const App = () => {
 
     setData((p: any) => ({ 
       ...p, 
-      seconds: 0, // Zera o cronômetro
+      seconds: 0, 
       active: false, 
       history: [entry, ...p.history] 
     }));
     
-    setIsAlarmActive(false); // Para o alarme
+    setIsAlarmActive(false);
     setActiveTab('historico');
     playSound('success');
   };
 
+  // CONTINUAR TRABALHO (Carrega tempo e dados)
   const resumeHistory = (h: any) => {
     setData((p: any) => ({
       ...p,
@@ -147,8 +147,8 @@ const App = () => {
       client: String(h.client),
       notes: String(h.notes),
       rate: Number(h.rate),
-      seconds: 0, // Inicia do zero ao retomar novo ciclo
-      active: false
+      seconds: Number(h.time), // Retoma do tempo salvo
+      active: true // Já inicia contando
     }));
     setActiveTab('controle');
     playSound('start');
@@ -162,14 +162,23 @@ const App = () => {
   const sumTotal = selectedProjects.reduce((acc: number, h: any) => acc + h.total, 0);
   const sumSeconds = selectedProjects.reduce((acc: number, h: any) => acc + h.time, 0);
 
-  // Formatação de texto para exportação
+  // Exportação para Texto/Word
+  const exportDoc = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.doc`;
+    a.click();
+  };
+
   const getIndividualText = (h: any) => {
-    return `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO INDIVIDUAL DE PRODUÇÃO\n\nCLIENTE: ${h.client}\nPROJETO: ${h.project}\nDATA INÍCIO: ${h.startTime}\nDATA FIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTEMPO TOTAL: ${formatT(h.time)}\nVALOR TOTAL: ${cur(h.total)}\n\nNOTAS: ${h.notes || '-'}`;
+    return `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO INDIVIDUAL DE PRODUÇÃO\n\nCLIENTE: ${h.client}\nPROJETO: ${h.project}\nINÍCIO: ${h.startTime}\nFIM: ${h.endTime}\nVALOR HORA: ${cur(h.rate)}\nTEMPO: ${formatT(h.time)}\nVALOR TOTAL: ${cur(h.total)}\n\nNOTAS: ${h.notes || '-'}`;
   };
 
   const getSumText = () => {
-    let t = `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO DE SOMA UNIFICADA\n\nPROJETO | CLIENTE | DATA | TOTAL\n`;
-    selectedProjects.forEach(p => t += `${p.project} | ${p.client} | ${p.date} | ${cur(p.total)}\n`);
+    let t = `${BRAND_NAME}\n${ADDRESS}\n${CONTACT}\n\nRELATÓRIO DE SOMA UNIFICADA\n\nPROJETO | CLIENTE | DATA | TEMPO | TOTAL\n`;
+    selectedProjects.forEach(p => t += `${p.project} | ${p.client} | ${p.date} | ${formatT(p.time)} | ${cur(p.total)}\n`);
     t += `\nSOMA ACUMULADA: ${formatT(sumSeconds)} | ${cur(sumTotal)}`;
     return t;
   };
@@ -177,25 +186,25 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-[#f1f5f9] text-slate-800 font-sans overflow-hidden select-none">
       
-      {/* HEADER PRINCIPAL */}
+      {/* CABEÇALHO IMAGENS */}
       <header className="header-premium shadow-lg z-30">
         <h1 className="text-2xl font-black italic tracking-tighter text-white uppercase">{BRAND_NAME}</h1>
-        <div className="text-[9px] font-bold text-slate-200 mt-1">
+        <div className="text-[10px] font-bold text-slate-200 mt-1">
           {ADDRESS}<br />
-          {CONTACT}
+          Tel / <span className="text-[#27ae60]">WhatsApp:</span> 74 9 91108629
         </div>
       </header>
 
       {/* ABAS */}
       <nav className="flex bg-white border-b border-slate-300 z-20">
         <button onClick={() => setActiveTab('controle')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'controle' ? 'text-slate-900' : 'text-slate-400'}`}>
-          <i className="fas fa-play-circle text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest">Controle</span>
+          <i className="fas fa-clock text-xl"></i>
+          <span className="text-[9px] font-black uppercase tracking-widest">Controle Ativo</span>
           {activeTab === 'controle' && <div className="absolute bottom-0 w-full h-[3px] bg-slate-600"></div>}
         </button>
         <button onClick={() => setActiveTab('historico')} className={`flex-1 py-4 flex flex-col items-center gap-1 relative ${activeTab === 'historico' ? 'text-slate-900' : 'text-slate-400'}`}>
-          <i className="fas fa-file-invoice-dollar text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest">Relatórios</span>
+          <i className="fas fa-list-check text-xl"></i>
+          <span className="text-[9px] font-black uppercase tracking-widest">Histórico Trabalho</span>
           {activeTab === 'historico' && <div className="absolute bottom-0 w-full h-[3px] bg-slate-600"></div>}
         </button>
       </nav>
@@ -204,10 +213,8 @@ const App = () => {
         
         {activeTab === 'controle' && (
           <div className="space-y-4 animate-in">
-            
-            {/* DISPLAY DE TEMPO */}
             <div className={`bg-[#334155] rounded-[2.5rem] p-8 text-center shadow-xl border border-white/10 relative transition-all duration-500 ${isAlarmActive ? 'ring-8 ring-red-500 animate-pulse' : ''}`}>
-               <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">PRODUÇÃO ATIVA</span>
+               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Status: {data.active ? 'CONTANDO' : 'PAUSADO'}</span>
                <div className="text-6xl font-black font-mono text-white tracking-tighter my-2">
                   {formatT(data.seconds)}
                </div>
@@ -216,7 +223,7 @@ const App = () => {
                </div>
                
                <div className="bg-black/20 rounded-2xl py-3 px-4 mb-8 flex items-center justify-center gap-3 border border-white/5">
-                  <span className="text-[8px] font-black text-slate-300 uppercase">Estipular Meta (Min):</span>
+                  <span className="text-[8px] font-black text-slate-300 uppercase">Parar em (Min):</span>
                   <input type="number" className="w-16 bg-white/10 text-center text-white font-black rounded-lg outline-none border border-white/20 p-1 text-xs" value={data.goalMinutes} onChange={e => setData({...data, goalMinutes: parseInt(e.target.value) || 0})} />
                </div>
 
@@ -239,7 +246,6 @@ const App = () => {
                </div>
             </div>
 
-            {/* FORMULÁRIO */}
             <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-200 space-y-4">
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -252,25 +258,17 @@ const App = () => {
                   </div>
                </div>
                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Notas Técnicas Adicionais</label>
-                  <textarea className="w-full bg-[#f8fafc] p-3 rounded-xl border border-slate-200 text-[10px] text-slate-600 font-medium h-20 outline-none resize-none" placeholder="Detalhes do projeto..." value={data.notes} onChange={e => setData({...data, notes: e.target.value})} />
-               </div>
-               <div className="bg-[#f8fafc] p-4 rounded-2xl border border-slate-200 text-center">
-                  <span className="text-[8px] font-black text-cyan-600 uppercase block mb-2 tracking-widest">Valor da Hora Trabalhada</span>
-                  <div className="flex items-center justify-between mb-2">
-                     <span className="text-2xl font-black italic">R$ {Number(data.rate).toFixed(2).replace('.', ',')}</span>
-                     <input type="number" className="w-16 bg-white border border-slate-300 text-center font-black p-2 rounded-lg text-xs" value={data.rate} onChange={e => setData({...data, rate: parseFloat(e.target.value) || 0})} />
-                  </div>
-                  <input type="range" min="1" max="500" className="w-full h-1 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-slate-600" value={data.rate} onChange={e => setData({...data, rate: parseInt(e.target.value)})} />
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Notas do Projeto</label>
+                  <textarea className="w-full bg-[#f8fafc] p-3 rounded-xl border border-slate-200 text-[10px] text-slate-600 font-medium h-20 outline-none resize-none" placeholder="Detalhes técnicos..." value={data.notes} onChange={e => setData({...data, notes: e.target.value})} />
                </div>
             </div>
           </div>
         )}
 
         {activeTab === 'historico' && (
-          <div className="space-y-8 animate-in pb-10">
+          <div className="space-y-6 animate-in pb-10">
             
-            {/* RELATÓRIO DE SOMA UNIFICADA (Req: Imagem 2) */}
+            {/* CALCULADORA DE SOMA UNIFICADA (Req: Imagem 2) */}
             {selectedIds.length > 0 && (
               <div className="bg-white rounded-xl border border-slate-400 shadow-2xl overflow-hidden mb-10">
                  <div className="header-premium py-4">
@@ -278,18 +276,16 @@ const App = () => {
                     <p className="text-[8px] text-slate-200">{ADDRESS}</p>
                     <p className="text-[8px] text-slate-200">{CONTACT}</p>
                  </div>
-                 
                  <div className="p-3 text-center border-b bg-slate-50">
                     <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest">Relatório de Soma Unificada</h3>
                  </div>
-
                  <div className="overflow-x-auto">
                     <table className="sum-table">
                        <thead>
                           <tr>
                              <th>Projeto</th>
                              <th>Cliente</th>
-                             <th>Data Início</th>
+                             <th>Data</th>
                              <th>Valor Hora</th>
                              <th>Tempo</th>
                              <th>Valor Total</th>
@@ -300,10 +296,10 @@ const App = () => {
                              <tr key={p.id}>
                                 <td>{p.project}</td>
                                 <td className="text-cyan-600">{p.client}</td>
-                                <td>{p.startTime.split(',')[0]}</td>
+                                <td>{p.date}</td>
                                 <td>{cur(p.rate)}</td>
-                                <td className="font-black">{formatT(p.time)}</td>
-                                <td className="text-green-600">{cur(p.total)}</td>
+                                <td className="font-black text-cyan-600">{formatT(p.time)}</td>
+                                <td className="text-green-600 font-black">{cur(p.total)}</td>
                              </tr>
                           ))}
                           <tr className="bg-slate-50 border-t-2 border-slate-300">
@@ -314,34 +310,30 @@ const App = () => {
                        </tbody>
                     </table>
                  </div>
-
                  <div className="grid grid-cols-3 gap-1 p-2 bg-slate-100 border-t border-slate-300">
-                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getSumText())}`)} className="bg-emerald-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fab fa-whatsapp"></i> Whatsapp</button>
-                    <button onClick={() => alert("Relatório salvo no Histórico do Plugin")} className="bg-blue-600 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fas fa-save"></i> Salvar Relatório</button>
-                    <button onClick={() => setSelectedIds([])} className="bg-slate-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm">Limpar Seleção</button>
+                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getSumText())}`)} className="bg-emerald-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fab fa-whatsapp"></i> Zap</button>
+                    <button onClick={() => exportDoc(getSumText(), 'Soma_Trabalho')} className="bg-blue-600 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm"><i className="fas fa-file-word"></i> Word</button>
+                    <button onClick={() => setSelectedIds([])} className="bg-slate-500 text-white p-2 rounded-lg text-[8px] font-black uppercase shadow-sm">Limpar</button>
                  </div>
               </div>
             )}
 
-            {/* RELATÓRIO INDIVIDUAL (Req: Imagem 1) */}
+            {/* RELATÓRIOS INDIVIDUAIS (Req: Imagem 1) */}
             <div className="space-y-10">
               {data.history.map((h: any) => (
                 <div key={String(h.id)} className="relative group">
                   <div className="absolute top-4 left-[-20px] z-10">
                     <input type="checkbox" className="cb-custom" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
                   </div>
-
                   <div className="bg-white rounded-xl border border-slate-400 shadow-md overflow-hidden">
                     <div className="header-premium py-5">
                       <h2 className="text-xl font-black italic tracking-tighter uppercase">{BRAND_NAME}</h2>
                       <p className="text-[8px] text-slate-200 mt-1">{ADDRESS}</p>
                       <p className="text-[8px] text-slate-200">{CONTACT}</p>
                     </div>
-                    
                     <div className="p-3 text-center border-b border-slate-100 bg-slate-50">
                       <h3 className="font-black text-[10px] text-slate-500 uppercase tracking-widest">Relatório Individual de Produção</h3>
                     </div>
-                    
                     <div className="p-4">
                       <table className="report-table">
                         <tbody>
@@ -354,22 +346,18 @@ const App = () => {
                           <tr className="bg-green-50"><td className="text-green-premium">Valor Total:</td><td className="text-green-premium">{cur(h.total)}</td></tr>
                         </tbody>
                       </table>
-
-                      {h.notes && (
-                        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                          <span className="text-[8px] font-black text-slate-400 block mb-1 uppercase">Notas Técnicas Adicionais:</span>
-                          <p className="text-[10px] text-slate-600 italic leading-relaxed">{h.notes}</p>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-5 gap-2 mt-5 border-t border-slate-100 pt-4">
+                      <div className="grid grid-cols-4 gap-2 mt-5 border-t border-slate-100 pt-4">
                         <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(getIndividualText(h))}`)} className="flex flex-col items-center p-2 rounded-xl hover:bg-emerald-50 text-emerald-600">
                           <i className="fab fa-whatsapp text-lg"></i>
                           <span className="text-[7px] font-black uppercase mt-1">Zap</span>
                         </button>
+                        <button onClick={() => exportDoc(getIndividualText(h), `Relatorio_${h.project}`)} className="flex flex-col items-center p-2 rounded-xl hover:bg-blue-50 text-blue-600">
+                          <i className="fas fa-file-word text-lg"></i>
+                          <span className="text-[7px] font-black uppercase mt-1">Word</span>
+                        </button>
                         <button onClick={() => resumeHistory(h)} className="flex flex-col items-center p-2 rounded-xl hover:bg-cyan-50 text-cyan-600">
                           <i className="fas fa-redo text-lg"></i>
-                          <span className="text-[7px] font-black uppercase mt-1">Retomar</span>
+                          <span className="text-[7px] font-black uppercase mt-1">Continuar</span>
                         </button>
                         <button onClick={() => confirm("Apagar?") && setData((p:any) => ({...p, history: p.history.filter((x:any) => x.id !== h.id)}))} className="flex flex-col items-center p-2 rounded-xl hover:bg-red-50 text-red-500">
                           <i className="fas fa-trash text-lg"></i>
@@ -387,7 +375,7 @@ const App = () => {
 
       <footer className="p-3 bg-white border-t border-slate-300 text-center z-10 shadow-inner">
          <div className="text-[7px] font-black text-slate-400 uppercase tracking-[0.3em] leading-relaxed">
-           LUCANO DESIGNER3D V19.0 - SISTEMA PROFISSIONAL
+           LUCANO DESIGNER3D V19.5 - PREMIUM PRO
          </div>
       </footer>
     </div>
