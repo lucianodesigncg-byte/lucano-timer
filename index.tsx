@@ -34,7 +34,7 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
 const App = () => {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('lucano_v48_storage');
+      const saved = localStorage.getItem('lucano_v54_storage');
       if (!saved) return { client: '', project: '', notes: '', rate: 25, seconds: 0, active: false, goalMinutes: 0, history: [], sessionGoal: 30 };
       const parsed = JSON.parse(saved);
       return { 
@@ -59,7 +59,7 @@ const App = () => {
   const alarmSoundRef = useRef<any>(null);
 
   useEffect(() => {
-    localStorage.setItem('lucano_v48_storage', JSON.stringify(data));
+    localStorage.setItem('lucano_v54_storage', JSON.stringify(data));
   }, [data]);
 
   useEffect(() => {
@@ -197,125 +197,148 @@ const App = () => {
     playSound('success');
   };
 
-  // EXPORTAÇÃO PREMIUM V48
   const exportWordReport = (title: string, entries: any[], isSummary: boolean) => {
     const BOM = "\ufeff";
     const totalValue = entries.reduce((acc, e) => acc + e.total, 0);
     const totalTime = entries.reduce((acc, e) => acc + e.time, 0);
     
-    // Nomenclatura solicitada: Cliente - Projeto
-    const filename = isSummary 
-      ? `SOMA CONSOLIDADA - ${entries.length} PROJETOS`
-      : `${entries[0].client} - ${entries[0].project}`;
+    let filename = "";
+    if (isSummary) {
+      const uniqueClients = Array.from(new Set(entries.map(e => e.client)));
+      filename = uniqueClients.length === 1 ? `${uniqueClients[0]} - SOMA` : `DIVERSOS - SOMA`;
+    } else {
+      filename = `${entries[0].client} - ${entries[0].project}`;
+    }
 
-    let contentHtml = "";
+    let bodyHtml = "";
 
     if (isSummary) {
-      // Layout compacto para caber mais na A4 (Modo Soma)
-      contentHtml = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+      bodyHtml = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
           <thead>
             <tr style="background: #0c4a6e; color: #ffffff;">
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px;">CLIENTE / PROJETO</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">VALOR HORA</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px;">CLIENTE</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px;">PROJETO</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">VALOR/H</th>
               <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">TEMPO</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">DATA INÍCIO/FIM</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">PERÍODO</th>
               <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; font-size: 11px;">SUBTOTAL</th>
             </tr>
           </thead>
           <tbody>
-            ${entries.map(h => `
-              <tr style="background: #ffffff;">
-                <td style="padding: 10px; border: 1px solid #e2e8f0; font-size: 12px;">
-                  <b style="font-size: 14px; color: #0f172a;">${h.client}</b><br/>
-                  <span style="color: #64748b;">${h.project}</span>
+            ${entries.map((h, i) => `
+              <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: middle;">
+                  <b style="font-size: 14px; color: #0c4a6e; text-transform: uppercase;">${h.client}</b>
                 </td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 11px;">${cur(h.rate)}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 12px;">${formatT(h.time)}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #475569;">
-                  ${h.startTime.split(',')[1]}<br/>até<br/>${h.endTime.split(',')[1]}
+                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: middle;">
+                  <span style="font-size: 12px; color: #334155; font-weight: bold; text-transform: uppercase;">${h.project}</span>
                 </td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; font-size: 13px; color: #0891b2;">${cur(h.total)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #475569;">${cur(h.rate)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 13px; color: #0ea5e9;">${formatT(h.time)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #1e293b; line-height: 1.2;">
+                  ${h.startTime.split(',')[1]} <br/> <span style="font-size: 8px; color: #94a3b8;">até</span> <br/> ${h.endTime.split(',')[1]}
+                </td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; font-size: 14px; color: #0891b2;">${cur(h.total)}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
+        <div style="margin-top: 25px; padding: 25px; background: #0c4a6e; border-radius: 12px; color: #ffffff; text-align: right;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="text-align: right; vertical-align: middle;">
+                <span style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase;">Tempo Acumulado</span><br/>
+                <span style="font-size: 22px; font-weight: 900;">${formatT(totalTime)}</span>
+              </td>
+              <td style="width: 45px;"></td>
+              <td style="text-align: right; border-left: 2px solid rgba(255,255,255,0.2); padding-left: 25px;">
+                <span style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase;">Investimento Total Consolidado</span><br/>
+                <span style="font-size: 34px; font-weight: 900;">${cur(totalValue)}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
       `;
     } else {
-      // Layout Individual com fontes maiores
       const h = entries[0];
-      contentHtml = `
-        <div style="border: 2px solid #e2e8f0; padding: 30px; border-radius: 15px; background: #ffffff; margin-top: 20px;">
-          <p style="margin: 0; font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 2px;">Informações do Cliente</p>
-          <h1 style="margin: 5px 0 25px 0; font-size: 26pt; color: #0f172a; font-weight: 900; line-height: 1;">${h.client}</h1>
-          
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-              <td style="padding: 15px 0; font-size: 12px; color: #64748b; font-weight: bold; width: 40%;">TÍTULO DO PROJETO</td>
-              <td style="padding: 15px 0; font-size: 18px; color: #0f172a; font-weight: 900; text-transform: uppercase;">${h.project}</td>
+      bodyHtml = `
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 15px; margin-top: 5px;">
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase;">RELATÓRIO PARA O CLIENTE:</p>
+            <h1 style="margin: 2px 0; font-size: 22pt; color: #0f172a; font-weight: 900; line-height: 1.1; text-transform: uppercase;">${h.client}</h1>
+            <div style="height: 4px; width: 60px; background: #0ea5e9; border-radius: 2px; margin-top: 6px;"></div>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr style="border-bottom: 1.5px solid #f1f5f9;">
+              <td style="padding: 12px 0; width: 45%;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">PROJETO EXECUTADO</span><br/>
+                <span style="font-size: 16px; color: #0f172a; font-weight: 800; text-transform: uppercase;">${h.project}</span>
+              </td>
+              <td style="padding: 12px 0; text-align: right;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">VALOR/HORA</span><br/>
+                <span style="font-size: 16px; color: #0f172a; font-weight: 800;">${cur(h.rate)}</span>
+              </td>
             </tr>
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-              <td style="padding: 15px 0; font-size: 12px; color: #64748b; font-weight: bold;">VALOR DA HORA TRABALHADA</td>
-              <td style="padding: 15px 0; font-size: 16px; color: #0f172a; font-weight: bold;">${cur(h.rate)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-              <td style="padding: 15px 0; font-size: 12px; color: #64748b; font-weight: bold;">TEMPO TOTAL DE PRODUÇÃO</td>
-              <td style="padding: 15px 0; font-size: 22pt; color: #0ea5e9; font-weight: 900; font-family: monospace;">${formatT(h.time)}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-              <td style="padding: 15px 0; font-size: 12px; color: #64748b; font-weight: bold;">DATA E HORA DE INÍCIO</td>
-              <td style="padding: 15px 0; font-size: 14pt; color: #334155;">${h.startTime}</td>
+            <tr style="border-bottom: 1.5px solid #f1f5f9;">
+              <td style="padding: 15px 0;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">CRONOMETRIA TÉCNICA</span><br/>
+                <span style="font-size: 26pt; color: #0ea5e9; font-weight: 900; font-family: 'Courier New', Courier, monospace;">${formatT(h.time)}</span>
+              </td>
+              <td style="padding: 15px 0; text-align: right;">
+                <span style="font-size: 12px; background: #f0fdf4; color: #166534; padding: 5px 12px; border-radius: 12px; font-weight: 900;">PRODUÇÃO CONCLUÍDA</span>
+              </td>
             </tr>
             <tr>
-              <td style="padding: 15px 0; font-size: 12px; color: #64748b; font-weight: bold;">DATA E HORA DE TÉRMINO</td>
-              <td style="padding: 15px 0; font-size: 14pt; color: #334155;">${h.endTime}</td>
+              <td style="padding: 12px 0;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA INICIAL</span><br/>
+                <span style="font-size: 13pt; color: #334155; font-weight: 600;">${h.startTime}</span>
+              </td>
+              <td style="padding: 12px 0; text-align: right;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA FINAL</span><br/>
+                <span style="font-size: 13pt; color: #334155; font-weight: 600;">${h.endTime}</span>
+              </td>
             </tr>
           </table>
 
           ${h.notes ? `
-            <div style="background: #f8fafc; padding: 20px; border-radius: 10px; border-left: 5px solid #cbd5e1; margin-bottom: 25px;">
-              <p style="margin: 0 0 5px 0; font-size: 10px; color: #64748b; font-weight: bold;">ANOTAÇÕES TÉCNICAS DO PROJETO</p>
-              <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.6;">${h.notes}</p>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border-left: 5px solid #0c4a6e; margin-bottom: 25px;">
+              <p style="margin: 0 0 8px 0; font-size: 10px; color: #0c4a6e; font-weight: 900; text-transform: uppercase;">ANOTAÇÕES TÉCNICAS E MEDIDAS</p>
+              <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.6; font-style: italic;">${h.notes}</p>
             </div>
           ` : ''}
 
           <div style="background: #0c4a6e; padding: 25px; border-radius: 15px; text-align: right; color: #ffffff;">
-            <span style="font-size: 14px; opacity: 0.8; font-weight: bold;">VALOR TOTAL DO INVESTIMENTO</span><br/>
-            <span style="font-size: 32pt; font-weight: 900; line-height: 1.2;">${cur(h.total)}</span>
+            <span style="font-size: 11px; opacity: 0.7; font-weight: bold; text-transform: uppercase;">VALOR FINAL DE INVESTIMENTO</span><br/>
+            <span style="font-size: 32pt; font-weight: 900; line-height: 1;">${cur(h.total)}</span>
           </div>
         </div>
       `;
     }
 
-    let html = `
+    const html = `
       <html>
         <head><meta charset="utf-8"></head>
-        <body style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 40px; color: #334155; background: #ffffff;">
-          <div style="border-bottom: 5px solid #0c4a6e; padding-bottom: 25px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div style="width: 60%;">
-              <h1 style="color: #0c4a6e; font-size: 28pt; margin: 0; font-weight: 900; text-transform: uppercase; letter-spacing: -1px;">${BRAND_NAME}</h1>
-              <p style="font-size: 11px; color: #64748b; margin: 5px 0; font-weight: bold;">${ADDRESS} | ${CONTACT}</p>
-            </div>
-            <div style="width: 35%; text-align: right;">
-              <p style="margin: 0; font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">Tipo de Documento</p>
-              <h3 style="margin: 0; color: #0ea5e9; font-size: 18px; font-weight: 900; text-transform: uppercase;">${title}</h3>
-            </div>
-          </div>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; padding: 10px 35px; color: #334155; background: #ffffff;">
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border-bottom: 4px solid #0c4a6e; padding-bottom: 20px;">
+            <tr>
+              <td style="width: 65%;">
+                <h1 style="color: #0c4a6e; font-size: 30pt; margin: 0; font-weight: 900; text-transform: uppercase; letter-spacing: -2px;">${BRAND_NAME}</h1>
+                <p style="font-size: 20px; color: #1e293b; margin: 8px 0; font-weight: 900; line-height: 1.2;">${ADDRESS}<br/>${CONTACT}</p>
+              </td>
+              <td style="width: 35%; text-align: right; vertical-align: top;">
+                <p style="margin: 0; font-size: 10px; color: #94a3b8; font-weight: 900; text-transform: uppercase;">Relatório Corporativo V54</p>
+                <h3 style="margin: 3px 0 0 0; color: #0ea5e9; font-size: 20px; font-weight: 900; text-transform: uppercase;">${title}</h3>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #64748b; font-weight: bold;">EMITIDO EM: ${new Date().toLocaleDateString('pt-BR')}</p>
+              </td>
+            </tr>
+          </table>
           
-          ${contentHtml}
+          ${bodyHtml}
 
-          ${isSummary ? `
-            <div style="margin-top: 30px; padding: 25px; background: #0c4a6e; border-radius: 15px; color: #ffffff; text-align: right;">
-              <p style="margin: 0; font-size: 12px; font-weight: bold; opacity: 0.8;">RESUMO CONSOLIDADO FINAL</p>
-              <div style="display: flex; justify-content: flex-end; gap: 40px; margin-top: 10px; align-items: baseline;">
-                <div><span style="font-size: 14px; opacity: 0.7;">TOTAL HORAS:</span> <b style="font-size: 20px; font-family: monospace;">${formatT(totalTime)}</b></div>
-                <div><span style="font-size: 16px; font-weight: bold;">VALOR TOTAL:</span> <b style="font-size: 30px; font-weight: 900;">${cur(totalValue)}</b></div>
-              </div>
-            </div>
-          ` : ''}
-
-          <div style="margin-top: 50px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; font-weight: bold;">
-            ESTE RELATÓRIO TEM VALOR TÉCNICO E DE CONTROLE DE PRODUÇÃO • GERADO POR LUCANO DESIGNER3D ENGINE PRO V48
+          <div style="margin-top: 35px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 25px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+            Lucano Designer3D Engine V54.0 • Sistema Profissional de Auditoria AI
           </div>
         </body>
       </html>
@@ -339,19 +362,19 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-[#020617] text-slate-100 overflow-hidden select-none font-sans">
       
-      {/* HEADER PROFISSIONAL DASHBOARD */}
+      {/* HEADER DASHBOARD */}
       <header className="relative py-8 px-10 bg-slate-900 border-b-4 border-cyan-500 z-40 shadow-2xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full -mr-24 -mt-24 blur-3xl"></div>
         <div className="relative text-center">
           <h1 className="text-3xl font-black italic tracking-tight text-white uppercase drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
             {BRAND_NAME}
           </h1>
           <div className="flex items-center justify-center gap-4 mt-2">
-            <span className="h-0.5 w-8 bg-cyan-500 opacity-50"></span>
-            <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Premium IA Timer V48.0</p>
-            <span className="h-0.5 w-8 bg-cyan-500 opacity-50"></span>
+            <span className="h-0.5 w-10 bg-cyan-500 opacity-50"></span>
+            <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Premium AI V54.0</p>
+            <span className="h-0.5 w-10 bg-cyan-500 opacity-50"></span>
           </div>
-          <p className="text-[8px] font-bold text-slate-500 mt-3 uppercase tracking-widest">{CONTACT}</p>
+          <p className="text-[9px] font-bold text-slate-500 mt-3 uppercase tracking-widest">{ADDRESS} • {CONTACT}</p>
         </div>
       </header>
 
@@ -371,7 +394,7 @@ const App = () => {
 
       <main className="flex-1 overflow-y-auto px-6 py-8 no-scrollbar relative bg-[radial-gradient(circle_at_50%_50%,_#0f172a_0%,_#020617_100%)]">
         
-        {/* MODAL EXCLUIR */}
+        {/* MODAIS */}
         {itemToDelete && (
           <div className="absolute inset-0 z-[70] flex items-center justify-center p-8 bg-black/98 backdrop-blur-3xl">
              <div className="bg-slate-900 border-2 border-rose-500/50 rounded-[3rem] p-10 text-center shadow-2xl animate-in max-w-sm w-full">
@@ -379,7 +402,6 @@ const App = () => {
                    <i className="fas fa-trash-alt text-rose-500 text-3xl"></i>
                 </div>
                 <h2 className="text-xl font-black text-white uppercase mb-3">Eliminar Registro?</h2>
-                <p className="text-slate-500 text-[10px] mb-8 uppercase tracking-widest font-bold">Esta operação é irreversível no sistema Lucano.</p>
                 <div className="flex flex-col gap-3">
                    <button onClick={handleDelete} className="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-rose-900/40">CONFIRMAR EXCLUSÃO</button>
                    <button onClick={() => setItemToDelete(null)} className="w-full text-slate-500 hover:text-white font-black py-3 text-[10px] uppercase tracking-widest">CANCELAR</button>
@@ -388,13 +410,11 @@ const App = () => {
           </div>
         )}
 
-        {/* ALERTA META */}
         {showAlarmChoice && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-8 bg-black/95 backdrop-blur-xl">
              <div className="bg-slate-900 border-2 border-amber-500 rounded-[3.5rem] p-12 text-center shadow-[0_0_50px_rgba(245,158,11,0.3)] animate-in max-w-sm w-full">
                 <i className="fas fa-bolt text-amber-500 text-5xl mb-6 animate-pulse"></i>
                 <h2 className="text-2xl font-black text-white uppercase mb-2">Meta Concluída</h2>
-                <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-8">O ciclo programado foi finalizado.</p>
                 <div className="flex flex-col gap-4">
                    <button onClick={() => { setShowAlarmChoice(false); setData(d => ({...d, active: true})); playSound('start'); }} className="w-full bg-emerald-600 text-white font-black py-6 rounded-3xl text-[11px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/40 active:scale-95">EXTENDER PRODUÇÃO</button>
                    <button onClick={handleSave} className="w-full bg-rose-600 text-white font-black py-6 rounded-3xl text-[11px] uppercase tracking-widest transition-all shadow-lg shadow-rose-900/40 active:scale-95">SALVAR E SAIR</button>
@@ -405,16 +425,15 @@ const App = () => {
 
         {activeTab === 'controle' && (
           <div className="space-y-6 animate-in max-w-2xl mx-auto">
-            {/* PAINEL CRONÔMETRO */}
             <div className="bg-slate-900/70 backdrop-blur-3xl rounded-[4rem] p-12 text-center shadow-2xl border border-white/5 relative overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-cyan-500/50 rounded-b-full"></div>
                 <div className={`text-[80px] font-black font-mono tracking-tighter my-4 transition-all ${data.active ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'text-white'}`}>{formatT(data.seconds)}</div>
                 <div className="text-3xl font-black text-emerald-400 italic mb-10 flex items-center justify-center gap-3">
-                   <span className="text-[11px] text-slate-500 not-italic font-black uppercase tracking-[0.3em]">PRODUÇÃO:</span> {cur((data.seconds / 3600) * data.rate)}
+                   <span className="text-[11px] text-slate-500 not-italic font-black uppercase tracking-[0.3em]">VALOR ATUAL:</span> {cur((data.seconds / 3600) * data.rate)}
                 </div>
 
-                <div className="bg-black/50 p-8 rounded-[2.5rem] border border-white/5 mb-10 group transition-all hover:border-cyan-500/30">
-                   <label className="text-[10px] font-black text-slate-500 uppercase block mb-5 tracking-[0.4em]">Programar Próxima Sessão (min):</label>
+                <div className="bg-black/50 p-8 rounded-[2.5rem] border border-white/5 mb-10">
+                   <label className="text-[10px] font-black text-slate-500 uppercase block mb-5 tracking-[0.4em]">Sessão Programada (minutos):</label>
                    <div className="flex items-center justify-center gap-6">
                       <button onClick={() => setData({...data, sessionGoal: Math.max(1, (data.sessionGoal || 30) - 15)})} className="w-14 h-14 rounded-2xl bg-slate-800 text-white hover:bg-slate-700 active:scale-90 transition-all border border-white/5"><i className="fas fa-minus"></i></button>
                       <input type="number" className="w-24 bg-transparent text-center text-4xl font-black text-white outline-none" value={data.sessionGoal || 30} onChange={e => setData({...data, sessionGoal: parseInt(e.target.value) || 0})} />
@@ -428,12 +447,11 @@ const App = () => {
                 </button>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <button onClick={handleSave} className="h-16 bg-rose-600 hover:bg-rose-500 rounded-2xl font-black text-white text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-lg shadow-rose-900/20"><i className="fas fa-save"></i> SALVAR</button>
+                  <button onClick={handleSave} className="h-16 bg-rose-600 hover:bg-rose-500 rounded-2xl font-black text-white text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-lg"><i className="fas fa-save"></i> SALVAR</button>
                   <button onClick={handleResetAndResume} className="h-16 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black text-white text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg border border-white/5">LIMPAR & RETOMAR</button>
                 </div>
             </div>
 
-            {/* FORMULÁRIO */}
             <div className="bg-slate-900/50 backdrop-blur-md p-10 rounded-[3.5rem] border border-white/5 space-y-8 shadow-xl">
                 <div className="grid grid-cols-1 gap-6">
                   <div className="space-y-2">
@@ -448,7 +466,7 @@ const App = () => {
                 
                 <div className="bg-slate-950/80 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
                    <div className="flex justify-between items-center mb-6">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Honorários (Hora):</span>
+                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Valor Hora:</span>
                       <div className="flex items-center gap-3">
                         <span className="text-2xl font-black text-white italic">{cur(data.rate)}</span>
                         <input type="number" className="w-20 bg-slate-800 border border-white/10 text-center font-black p-3 rounded-xl text-[12px] text-white" value={data.rate} onChange={e => setData(d => ({...d, rate: parseFloat(e.target.value) || 0}))} />
@@ -458,8 +476,8 @@ const App = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-[0.2em]">Memorial Descritivo / Anotações</label>
-                  <textarea className="w-full bg-black/60 p-6 rounded-[2.5rem] border border-white/10 text-[11px] text-slate-300 font-medium h-32 outline-none resize-none focus:border-purple-500 transition-all shadow-inner" placeholder="INSIRA DETALHES TÉCNICOS, MEDIDAS OU MDF..." value={data.notes} onChange={e => setData(d => ({...d, notes: e.target.value}))} />
+                  <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-[0.2em]">Anotações Técnicas</label>
+                  <textarea className="w-full bg-black/60 p-6 rounded-[2.5rem] border border-white/10 text-[11px] text-slate-300 font-medium h-32 outline-none resize-none focus:border-purple-500 transition-all shadow-inner" placeholder="MEDIDAS, MDF, DETALHES..." value={data.notes} onChange={e => setData(d => ({...d, notes: e.target.value}))} />
                 </div>
             </div>
           </div>
@@ -469,10 +487,9 @@ const App = () => {
           <div className="space-y-8 pb-24 animate-in max-w-4xl mx-auto">
             {selectedIds.length > 0 && (
               <div className="bg-slate-900 border-l-[12px] border-emerald-500 p-10 rounded-[3rem] shadow-2xl animate-in relative overflow-hidden">
-                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12"></div>
                  <div className="flex items-center justify-between mb-8">
                    <h2 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
-                     <i className="fas fa-calculator text-emerald-500"></i> Consolidado Selecionado
+                     <i className="fas fa-calculator text-emerald-500"></i> Seleção Consolidada
                    </h2>
                    <button onClick={() => setSelectedIds([])} className="w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all"><i className="fas fa-times"></i></button>
                  </div>
@@ -482,23 +499,23 @@ const App = () => {
                        <span className="text-2xl font-black text-cyan-400 font-mono tracking-tighter">{formatT(sumSeconds)}</span>
                     </div>
                     <div className="bg-black/40 p-6 rounded-3xl border border-white/5 shadow-inner">
-                       <span className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Investimento Total</span>
+                       <span className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Total Financeiro</span>
                        <span className="text-2xl font-black text-emerald-400 italic tracking-tighter">{cur(sumTotal)}</span>
                     </div>
                  </div>
                  <button onClick={() => exportWordReport("RELATÓRIO DE SOMA CONSOLIDADA", selectedProjects, true)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3">
-                   <i className="fas fa-file-invoice-dollar text-xl"></i> EXPORTAR SOMA PARA WORD (A4 OPTIMIZED)
+                   <i className="fas fa-file-invoice-dollar text-xl"></i> EXPORTAR SOMA (SMART NAMING V54)
                  </button>
               </div>
             )}
 
-            <div className="space-y-8">
+            <div className="space-y-10">
               {data.history.length === 0 ? (
                 <div className="text-center py-24 opacity-20">
                   <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
                     <i className="fas fa-database text-4xl"></i>
                   </div>
-                  <p className="font-black uppercase text-xs tracking-[0.5em]">Sem Registros em Memória</p>
+                  <p className="font-black uppercase text-xs tracking-[0.5em]">Sem Registros no Banco</p>
                 </div>
               ) : data.history.map((h: any) => (
                 <div key={h.id} className="relative group pl-12 animate-in">
@@ -507,42 +524,61 @@ const App = () => {
                     <div onClick={() => toggleSelect(h.id)} className="w-10 h-10 bg-slate-800 border-2 border-slate-700 rounded-2xl peer-checked:bg-cyan-500 peer-checked:border-cyan-500 transition-all flex items-center justify-center cursor-pointer shadow-xl active:scale-90"><i className="fas fa-check text-white text-sm opacity-0 peer-checked:opacity-100"></i></div>
                   </div>
 
-                  <div className={`bg-slate-900/80 rounded-[3rem] border transition-all duration-300 overflow-hidden shadow-xl ${selectedIds.includes(h.id) ? 'border-cyan-500 ring-2 ring-cyan-500/20' : 'border-white/5 hover:border-white/10'}`}>
-                    <div className="bg-slate-800/70 p-8 flex justify-between items-center border-b border-white/5">
-                       <div>
-                         <h3 className="text-base font-black text-white italic uppercase tracking-tighter group-hover:text-cyan-400 transition-colors">{h.project}</h3>
-                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{h.date} • {h.client}</span>
+                  <div className={`bg-slate-900/90 rounded-[3.5rem] border transition-all duration-300 shadow-2xl overflow-hidden ${selectedIds.includes(h.id) ? 'border-cyan-500 ring-4 ring-cyan-500/10' : 'border-white/5 hover:border-white/10'}`}>
+                    
+                    {/* NOVO HEADER DO CARD: FOCO NO CLIENTE */}
+                    <div className="bg-slate-800/80 p-8 flex justify-between items-start border-b border-white/5">
+                       <div className="flex-1">
+                         <div className="flex items-center gap-2 mb-1">
+                            <i className="fas fa-user-tie text-cyan-400 text-xs"></i>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{h.date}</span>
+                         </div>
+                         <h3 className="text-xl font-black text-cyan-400 uppercase tracking-tighter leading-none mb-2 drop-shadow-sm">{h.client}</h3>
+                         <div className="flex items-center gap-2">
+                           <span className="h-px w-6 bg-slate-600"></span>
+                           <span className="text-[11px] font-bold text-slate-300 uppercase italic tracking-tight">{h.project}</span>
+                         </div>
                        </div>
                        <div className="text-right">
-                         <span className="text-emerald-400 text-lg font-black block">{cur(h.total)}</span>
-                         <span className="text-[8px] text-slate-500 font-bold uppercase">{cur(h.rate)}/h</span>
+                         <div className="text-emerald-400 text-2xl font-black font-mono drop-shadow-[0_0_10px_rgba(52,211,153,0.2)]">{cur(h.total)}</div>
+                         <div className="text-[9px] text-slate-500 font-black uppercase mt-1 italic opacity-60">{cur(h.rate)} / HORA</div>
                        </div>
                     </div>
                     
                     <div className="p-8 space-y-8">
+                       {/* BOX DE DADOS TÉCNICOS */}
                        <div className="grid grid-cols-2 gap-6">
-                          <div className="bg-black/30 p-4 rounded-2xl border border-white/5">
-                            <span className="text-[8px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Início / Conclusão</span>
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-black text-white block"><i className="fas fa-play text-[8px] text-emerald-500 mr-2"></i>{h.startTime.split(',')[1]}</span>
-                              <span className="text-[10px] font-black text-white block"><i className="fas fa-stop text-[8px] text-rose-500 mr-2"></i>{h.endTime.split(',')[1]}</span>
+                          <div className="bg-black/40 p-5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm">
+                            <span className="text-[8px] font-black text-slate-600 uppercase block mb-3 tracking-[0.2em] border-b border-white/5 pb-2">JANELA DE TRABALHO</span>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] text-slate-500 font-bold uppercase">INÍCIO:</span>
+                                <span className="text-[11px] font-black text-white font-mono">{h.startTime.split(',')[1]}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] text-slate-500 font-bold uppercase">TÉRMINO:</span>
+                                <span className="text-[11px] font-black text-white font-mono">{h.endTime.split(',')[1]}</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="bg-black/30 p-4 rounded-2xl border border-white/5 flex flex-col justify-center">
-                            <span className="text-[8px] font-black text-slate-500 uppercase block mb-1 tracking-widest">Tempo Liquído</span>
-                            <span className="text-xl font-black text-cyan-400 font-mono tracking-tighter">{formatT(h.time)}</span>
+                          <div className="bg-black/40 p-5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm flex flex-col justify-center text-center">
+                            <span className="text-[8px] font-black text-slate-600 uppercase block mb-2 tracking-[0.2em]">TEMPO PRODUZIDO</span>
+                            <span className="text-2xl font-black text-cyan-400 font-mono tracking-tighter drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">{formatT(h.time)}</span>
                           </div>
                        </div>
                        
-                       <div className="flex gap-3 items-center pt-6 border-t border-white/5">
-                          <button onClick={() => handleContinueProject(h)} className="flex-1 bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-white border border-cyan-500/20 py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-md">REATIVAR PROJETO</button>
-                          
-                          <button onClick={() => exportWordReport("RELATÓRIO INDIVIDUAL TÉCNICO", [h], false)} className="w-14 h-14 bg-slate-800 text-cyan-500 rounded-2xl hover:bg-cyan-600 hover:text-white transition-all active:scale-95 shadow-md flex items-center justify-center border border-white/10" title="Exportar Cliente - Projeto">
-                            <i className="fas fa-file-word text-xl"></i>
+                       {/* BOTÕES DE AÇÃO REORGANIZADOS */}
+                       <div className="flex gap-4 items-center pt-6 border-t border-white/5">
+                          <button onClick={() => handleContinueProject(h)} className="flex-[3] bg-cyan-600 hover:bg-cyan-500 text-white py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.3em] transition-all active:scale-95 shadow-lg shadow-cyan-900/40 flex items-center justify-center gap-3">
+                            <i className="fas fa-play text-sm"></i> REATIVAR
                           </button>
                           
-                          <button onClick={(e) => { e.stopPropagation(); setItemToDelete(h.id); }} className="w-14 h-14 bg-rose-600/10 text-rose-500 rounded-2xl hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-md flex items-center justify-center border border-rose-500/10">
-                            <i className="fas fa-trash-alt text-xl"></i>
+                          <button onClick={() => exportWordReport("RELATÓRIO TÉCNICO", [h], false)} className="flex-1 h-16 bg-slate-800 text-cyan-400 rounded-[1.5rem] hover:bg-cyan-600 hover:text-white transition-all active:scale-95 shadow-xl flex items-center justify-center border border-white/10 group/btn">
+                            <i className="fas fa-file-word text-xl group-hover/btn:scale-110 transition-transform"></i>
+                          </button>
+                          
+                          <button onClick={(e) => { e.stopPropagation(); setItemToDelete(h.id); }} className="flex-1 h-16 bg-rose-600/10 text-rose-500 rounded-[1.5rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-xl flex items-center justify-center border border-rose-500/20 group/del">
+                            <i className="fas fa-trash-alt text-xl group-hover/del:rotate-12 transition-transform"></i>
                           </button>
                        </div>
                     </div>
@@ -555,7 +591,7 @@ const App = () => {
       </main>
 
       <footer className="p-5 bg-slate-950 border-t border-white/5 text-center relative z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-         <div className="text-[8px] font-black text-slate-700 uppercase tracking-[0.6em] opacity-40">LUCANO DESIGNER3D PRO V48.0 • ENGINE DE RELATÓRIOS OTIMIZADA</div>
+         <div className="text-[8px] font-black text-slate-700 uppercase tracking-[0.6em] opacity-40">LUCANO DESIGNER3D PRO V54.0 • AI ADVANCED REPROTS</div>
       </footer>
     </div>
   );
