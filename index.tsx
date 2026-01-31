@@ -34,7 +34,7 @@ const playSound = (type: 'start' | 'stop' | 'alarm' | 'success') => {
 const App = () => {
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('lucano_v54_storage');
+      const saved = localStorage.getItem('lucano_v55_storage');
       if (!saved) return { client: '', project: '', notes: '', rate: 25, seconds: 0, active: false, goalMinutes: 0, history: [], sessionGoal: 30 };
       const parsed = JSON.parse(saved);
       return { 
@@ -59,7 +59,7 @@ const App = () => {
   const alarmSoundRef = useRef<any>(null);
 
   useEffect(() => {
-    localStorage.setItem('lucano_v54_storage', JSON.stringify(data));
+    localStorage.setItem('lucano_v55_storage', JSON.stringify(data));
   }, [data]);
 
   useEffect(() => {
@@ -217,102 +217,77 @@ const App = () => {
         <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
           <thead>
             <tr style="background: #0c4a6e; color: #ffffff;">
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px;">CLIENTE</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px;">PROJETO</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">VALOR/H</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">TEMPO</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 11px;">PERÍODO</th>
-              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; font-size: 11px;">SUBTOTAL</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 10px;">CLIENTE/PROJETO</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 10px;">INÍCIO</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 10px;">TÉRMINO</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 10px;">VALOR/H</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 10px;">TEMPO</th>
+              <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; font-size: 10px;">SUBTOTAL</th>
             </tr>
           </thead>
           <tbody>
             ${entries.map((h, i) => `
               <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: middle;">
-                  <b style="font-size: 14px; color: #0c4a6e; text-transform: uppercase;">${h.client}</b>
+                <td style="padding: 12px; border: 1px solid #e2e8f0;">
+                  <b style="font-size: 12px; color: #0c4a6e; text-transform: uppercase;">${h.client}</b><br/>
+                  <span style="font-size: 10px; color: #64748b;">${h.project}</span>
                 </td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; vertical-align: middle;">
-                  <span style="font-size: 12px; color: #334155; font-weight: bold; text-transform: uppercase;">${h.project}</span>
-                </td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #475569;">${cur(h.rate)}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 13px; color: #0ea5e9;">${formatT(h.time)}</td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #1e293b; line-height: 1.2;">
-                  ${h.startTime.split(',')[1]} <br/> <span style="font-size: 8px; color: #94a3b8;">até</span> <br/> ${h.endTime.split(',')[1]}
-                </td>
-                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; font-size: 14px; color: #0891b2;">${cur(h.total)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px;">${h.startTime || '---'}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px;">${h.endTime || '---'}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 11px;">${cur(h.rate)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 11px;">${formatT(h.time)}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; font-size: 12px; color: #0891b2;">${cur(h.total)}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         <div style="margin-top: 25px; padding: 25px; background: #0c4a6e; border-radius: 12px; color: #ffffff; text-align: right;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="text-align: right; vertical-align: middle;">
-                <span style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase;">Tempo Acumulado</span><br/>
-                <span style="font-size: 22px; font-weight: 900;">${formatT(totalTime)}</span>
-              </td>
-              <td style="width: 45px;"></td>
-              <td style="text-align: right; border-left: 2px solid rgba(255,255,255,0.2); padding-left: 25px;">
-                <span style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase;">Investimento Total Consolidado</span><br/>
-                <span style="font-size: 34px; font-weight: 900;">${cur(totalValue)}</span>
-              </td>
-            </tr>
-          </table>
+          <span style="font-size: 10px; opacity: 0.8; text-transform: uppercase; font-weight: bold;">Resumo de Investimento</span><br/>
+          <span style="font-size: 12px; opacity: 0.8;">Tempo Total Acumulado: ${formatT(totalTime)}</span><br/>
+          <span style="font-size: 34px; font-weight: 900;">${cur(totalValue)}</span>
         </div>
       `;
     } else {
       const h = entries[0];
       bodyHtml = `
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 15px; margin-top: 5px;">
-          <div style="margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase;">RELATÓRIO PARA O CLIENTE:</p>
-            <h1 style="margin: 2px 0; font-size: 22pt; color: #0f172a; font-weight: 900; line-height: 1.1; text-transform: uppercase;">${h.client}</h1>
-            <div style="height: 4px; width: 60px; background: #0ea5e9; border-radius: 2px; margin-top: 6px;"></div>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr style="border-bottom: 1.5px solid #f1f5f9;">
-              <td style="padding: 12px 0; width: 45%;">
-                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">PROJETO EXECUTADO</span><br/>
-                <span style="font-size: 16px; color: #0f172a; font-weight: 800; text-transform: uppercase;">${h.project}</span>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px;">
+          <h1 style="margin: 0; font-size: 22pt; color: #0f172a; font-weight: 900; text-transform: uppercase;">${h.client}</h1>
+          <p style="margin: 5px 0 25px 0; font-size: 14px; color: #0ea5e9; font-weight: 800;">PROJETO: ${h.project}</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+            <tr style="background: #f8fafc;">
+              <td style="padding: 15px; border: 1px solid #e2e8f0; width: 50%;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA INÍCIO</span><br/>
+                <span style="font-size: 12px; color: #1e293b; font-weight: bold;">${h.startTime || h.date}</span>
               </td>
-              <td style="padding: 12px 0; text-align: right;">
-                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">VALOR/HORA</span><br/>
-                <span style="font-size: 16px; color: #0f172a; font-weight: 800;">${cur(h.rate)}</span>
-              </td>
-            </tr>
-            <tr style="border-bottom: 1.5px solid #f1f5f9;">
-              <td style="padding: 15px 0;">
-                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">CRONOMETRIA TÉCNICA</span><br/>
-                <span style="font-size: 26pt; color: #0ea5e9; font-weight: 900; font-family: 'Courier New', Courier, monospace;">${formatT(h.time)}</span>
-              </td>
-              <td style="padding: 15px 0; text-align: right;">
-                <span style="font-size: 12px; background: #f0fdf4; color: #166534; padding: 5px 12px; border-radius: 12px; font-weight: 900;">PRODUÇÃO CONCLUÍDA</span>
+              <td style="padding: 15px; border: 1px solid #e2e8f0; width: 50%;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA TÉRMINO</span><br/>
+                <span style="font-size: 12px; color: #1e293b; font-weight: bold;">${h.endTime || h.date}</span>
               </td>
             </tr>
             <tr>
-              <td style="padding: 12px 0;">
-                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA INICIAL</span><br/>
-                <span style="font-size: 13pt; color: #334155; font-weight: 600;">${h.startTime}</span>
+              <td style="padding: 15px; border: 1px solid #e2e8f0;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">VALOR DA HORA</span><br/>
+                <span style="font-size: 18px; color: #0c4a6e; font-weight: 900;">${cur(h.rate)} /h</span>
               </td>
-              <td style="padding: 12px 0; text-align: right;">
-                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">DATA/HORA FINAL</span><br/>
-                <span style="font-size: 13pt; color: #334155; font-weight: 600;">${h.endTime}</span>
+              <td style="padding: 15px; border: 1px solid #e2e8f0;">
+                <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">TEMPO TOTAL TRABALHADO</span><br/>
+                <span style="font-size: 22pt; color: #0ea5e9; font-weight: 900;">${formatT(h.time)}</span>
               </td>
             </tr>
           </table>
 
+          <div style="background: #0c4a6e; padding: 25px; border-radius: 15px; text-align: right; color: #ffffff;">
+            <span style="font-size: 11px; opacity: 0.7; font-weight: bold; text-transform: uppercase;">INVESTIMENTO TOTAL</span><br/>
+            <span style="font-size: 32pt; font-weight: 900;">${cur(h.total)}</span>
+          </div>
+          
           ${h.notes ? `
-            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border-left: 5px solid #0c4a6e; margin-bottom: 25px;">
-              <p style="margin: 0 0 8px 0; font-size: 10px; color: #0c4a6e; font-weight: 900; text-transform: uppercase;">ANOTAÇÕES TÉCNICAS E MEDIDAS</p>
-              <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.6; font-style: italic;">${h.notes}</p>
+            <div style="margin-top: 25px; padding: 20px; border: 1px dashed #cbd5e1; border-radius: 10px;">
+              <span style="font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase;">ANOTAÇÕES DO PROJETO</span><br/>
+              <p style="font-size: 11px; color: #475569; margin-top: 5px;">${h.notes}</p>
             </div>
           ` : ''}
-
-          <div style="background: #0c4a6e; padding: 25px; border-radius: 15px; text-align: right; color: #ffffff;">
-            <span style="font-size: 11px; opacity: 0.7; font-weight: bold; text-transform: uppercase;">VALOR FINAL DE INVESTIMENTO</span><br/>
-            <span style="font-size: 32pt; font-weight: 900; line-height: 1;">${cur(h.total)}</span>
-          </div>
         </div>
       `;
     }
@@ -320,25 +295,28 @@ const App = () => {
     const html = `
       <html>
         <head><meta charset="utf-8"></head>
-        <body style="font-family: 'Segoe UI', Arial, sans-serif; padding: 10px 35px; color: #334155; background: #ffffff;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border-bottom: 4px solid #0c4a6e; padding-bottom: 20px;">
+        <body style="font-family: 'Segoe UI', sans-serif; padding: 40px; color: #334155; background: #ffffff;">
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
             <tr>
-              <td style="width: 65%;">
-                <h1 style="color: #0c4a6e; font-size: 30pt; margin: 0; font-weight: 900; text-transform: uppercase; letter-spacing: -2px;">${BRAND_NAME}</h1>
-                <p style="font-size: 20px; color: #1e293b; margin: 8px 0; font-weight: 900; line-height: 1.2;">${ADDRESS}<br/>${CONTACT}</p>
+              <td style="width: 70%;">
+                <h1 style="color: #0c4a6e; font-size: 32pt; margin: 0; font-weight: 900; text-transform: uppercase; letter-spacing: -2px;">${BRAND_NAME}</h1>
+                <p style="font-size: 16px; color: #1e293b; margin: 4px 0; font-weight: 900;">${ADDRESS}</p>
+                <p style="font-size: 16px; color: #0ea5e9; margin: 2px 0; font-weight: 900;">${CONTACT}</p>
               </td>
-              <td style="width: 35%; text-align: right; vertical-align: top;">
-                <p style="margin: 0; font-size: 10px; color: #94a3b8; font-weight: 900; text-transform: uppercase;">Relatório Corporativo V54</p>
-                <h3 style="margin: 3px 0 0 0; color: #0ea5e9; font-size: 20px; font-weight: 900; text-transform: uppercase;">${title}</h3>
-                <p style="margin: 8px 0 0 0; font-size: 12px; color: #64748b; font-weight: bold;">EMITIDO EM: ${new Date().toLocaleDateString('pt-BR')}</p>
+              <td style="width: 30%; text-align: right; vertical-align: top;">
+                <p style="font-size: 10px; color: #94a3b8; font-weight: 900; text-transform: uppercase; margin: 0;">Relatório de Auditoria</p>
+                <p style="font-size: 12px; color: #1e293b; font-weight: 900; margin: 4px 0;">GERADO EM: ${new Date().toLocaleString('pt-BR')}</p>
               </td>
             </tr>
           </table>
+          <hr style="border: 0; border-top: 5px solid #0c4a6e; margin: 15px 0 25px 0;">
           
           ${bodyHtml}
 
-          <div style="margin-top: 35px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 25px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
-            Lucano Designer3D Engine V54.0 • Sistema Profissional de Auditoria AI
+          <div style="margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center;">
+            <p style="font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">
+              ${BRAND_NAME} • ${ADDRESS} • ${CONTACT}
+            </p>
           </div>
         </body>
       </html>
@@ -354,234 +332,213 @@ const App = () => {
   };
 
   const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
   const selectedProjects = data.history.filter((h: any) => selectedIds.includes(h.id));
   const sumTotal = selectedProjects.reduce((acc: number, h: any) => acc + h.total, 0);
   const sumSeconds = selectedProjects.reduce((acc: number, h: any) => acc + h.time, 0);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#020617] text-slate-100 overflow-hidden select-none font-sans">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-[#020617] text-slate-100 overflow-hidden select-none font-sans">
       
-      {/* HEADER DASHBOARD */}
-      <header className="relative py-8 px-10 bg-slate-900 border-b-4 border-cyan-500 z-40 shadow-2xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full -mr-24 -mt-24 blur-3xl"></div>
-        <div className="relative text-center">
-          <h1 className="text-3xl font-black italic tracking-tight text-white uppercase drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
-            {BRAND_NAME}
-          </h1>
-          <div className="flex items-center justify-center gap-4 mt-2">
-            <span className="h-0.5 w-10 bg-cyan-500 opacity-50"></span>
-            <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Premium AI V54.0</p>
-            <span className="h-0.5 w-10 bg-cyan-500 opacity-50"></span>
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-full md:w-20 lg:w-24 bg-slate-900/80 backdrop-blur-xl border-b md:border-b-0 md:border-r border-white/5 flex flex-row md:flex-col items-center justify-around md:justify-center py-4 md:py-8 gap-8 z-50">
+        <div className="hidden md:block mb-10">
+          <div className="w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+             <i className="fas fa-cube text-white text-xl"></i>
           </div>
-          <p className="text-[9px] font-bold text-slate-500 mt-3 uppercase tracking-widest">{ADDRESS} • {CONTACT}</p>
         </div>
-      </header>
-
-      {/* NAV */}
-      <nav className="flex bg-slate-950 border-b border-white/5 z-30 shadow-lg">
-        <button onClick={() => setActiveTab('controle')} className={`flex-1 py-5 flex flex-col items-center gap-2 transition-all relative ${activeTab === 'controle' ? 'text-cyan-400 bg-slate-900/50' : 'text-slate-500'}`}>
-          <i className="fas fa-microchip text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest">Painel Operacional</span>
-          {activeTab === 'controle' && <div className="absolute bottom-0 w-full h-[3px] bg-cyan-400"></div>}
+        <button onClick={() => setActiveTab('controle')} className={`p-4 rounded-2xl transition-all ${activeTab === 'controle' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+           <i className="fas fa-play-circle text-2xl"></i>
+           <span className="md:hidden text-[9px] block mt-1 font-black uppercase tracking-tighter">Painel</span>
         </button>
-        <button onClick={() => setActiveTab('historico')} className={`flex-1 py-5 flex flex-col items-center gap-2 transition-all relative ${activeTab === 'historico' ? 'text-emerald-400 bg-slate-900/50' : 'text-slate-500'}`}>
-          <i className="fas fa-layer-group text-xl"></i>
-          <span className="text-[9px] font-black uppercase tracking-widest">Base de Dados</span>
-          {activeTab === 'historico' && <div className="absolute bottom-0 w-full h-[3px] bg-emerald-400"></div>}
+        <button onClick={() => setActiveTab('historico')} className={`p-4 rounded-2xl transition-all ${activeTab === 'historico' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+           <i className="fas fa-database text-2xl"></i>
+           <span className="md:hidden text-[9px] block mt-1 font-black uppercase tracking-tighter">Base</span>
         </button>
-      </nav>
+        <div className="hidden md:block mt-auto text-slate-700 text-[10px] font-black uppercase [writing-mode:vertical-lr] tracking-widest opacity-30">
+           LUCANO V55.3
+        </div>
+      </aside>
 
-      <main className="flex-1 overflow-y-auto px-6 py-8 no-scrollbar relative bg-[radial-gradient(circle_at_50%_50%,_#0f172a_0%,_#020617_100%)]">
+      <main className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-10 no-scrollbar relative bg-[radial-gradient(circle_at_50%_0%,_#0f172a_0%,_#020617_100%)]">
         
+        {/* TOP BRANDING MOBILE */}
+        <div className="md:hidden flex flex-col items-center mb-10">
+           <h1 className="text-xl font-black text-white italic tracking-tighter uppercase">{BRAND_NAME}</h1>
+           <p className="text-[8px] font-bold text-cyan-400 tracking-[0.4em]">PREMIUM AUDITOR V55.3</p>
+        </div>
+
         {/* MODAIS */}
         {itemToDelete && (
-          <div className="absolute inset-0 z-[70] flex items-center justify-center p-8 bg-black/98 backdrop-blur-3xl">
-             <div className="bg-slate-900 border-2 border-rose-500/50 rounded-[3rem] p-10 text-center shadow-2xl animate-in max-w-sm w-full">
-                <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                   <i className="fas fa-trash-alt text-rose-500 text-3xl"></i>
-                </div>
-                <h2 className="text-xl font-black text-white uppercase mb-3">Eliminar Registro?</h2>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
+             <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-10 text-center shadow-2xl max-w-sm w-full animate-in">
+                <i className="fas fa-trash-alt text-rose-500 text-4xl mb-6"></i>
+                <h2 className="text-xl font-black text-white uppercase mb-6">Eliminar Registro?</h2>
                 <div className="flex flex-col gap-3">
-                   <button onClick={handleDelete} className="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-rose-900/40">CONFIRMAR EXCLUSÃO</button>
-                   <button onClick={() => setItemToDelete(null)} className="w-full text-slate-500 hover:text-white font-black py-3 text-[10px] uppercase tracking-widest">CANCELAR</button>
+                   <button onClick={handleDelete} className="w-full bg-rose-600 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-rose-900/40">Confirmar</button>
+                   <button onClick={() => setItemToDelete(null)} className="w-full text-slate-500 py-2 text-[10px] font-black uppercase tracking-widest">Voltar</button>
                 </div>
              </div>
           </div>
         )}
 
         {showAlarmChoice && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-8 bg-black/95 backdrop-blur-xl">
-             <div className="bg-slate-900 border-2 border-amber-500 rounded-[3.5rem] p-12 text-center shadow-[0_0_50px_rgba(245,158,11,0.3)] animate-in max-w-sm w-full">
-                <i className="fas fa-bolt text-amber-500 text-5xl mb-6 animate-pulse"></i>
-                <h2 className="text-2xl font-black text-white uppercase mb-2">Meta Concluída</h2>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-lg">
+             <div className="bg-slate-900 border-2 border-amber-500/50 rounded-[3rem] p-12 text-center shadow-2xl max-w-sm w-full animate-in">
+                <i className="fas fa-hourglass-end text-amber-500 text-5xl mb-6 animate-pulse"></i>
+                <h2 className="text-2xl font-black text-white uppercase mb-2">Meta de Tempo</h2>
+                <p className="text-slate-400 text-sm mb-10">Você atingiu o tempo programado para esta sessão.</p>
                 <div className="flex flex-col gap-4">
-                   <button onClick={() => { setShowAlarmChoice(false); setData(d => ({...d, active: true})); playSound('start'); }} className="w-full bg-emerald-600 text-white font-black py-6 rounded-3xl text-[11px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/40 active:scale-95">EXTENDER PRODUÇÃO</button>
-                   <button onClick={handleSave} className="w-full bg-rose-600 text-white font-black py-6 rounded-3xl text-[11px] uppercase tracking-widest transition-all shadow-lg shadow-rose-900/40 active:scale-95">SALVAR E SAIR</button>
+                   <button onClick={() => { setShowAlarmChoice(false); setData(d => ({...d, active: true})); playSound('start'); }} className="w-full bg-emerald-600 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white">Continuar</button>
+                   <button onClick={handleSave} className="w-full bg-rose-600 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white">Salvar e Sair</button>
                 </div>
              </div>
           </div>
         )}
 
         {activeTab === 'controle' && (
-          <div className="space-y-6 animate-in max-w-2xl mx-auto">
-            <div className="bg-slate-900/70 backdrop-blur-3xl rounded-[4rem] p-12 text-center shadow-2xl border border-white/5 relative overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-cyan-500/50 rounded-b-full"></div>
-                <div className={`text-[80px] font-black font-mono tracking-tighter my-4 transition-all ${data.active ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'text-white'}`}>{formatT(data.seconds)}</div>
-                <div className="text-3xl font-black text-emerald-400 italic mb-10 flex items-center justify-center gap-3">
-                   <span className="text-[11px] text-slate-500 not-italic font-black uppercase tracking-[0.3em]">VALOR ATUAL:</span> {cur((data.seconds / 3600) * data.rate)}
-                </div>
+          <div className="max-w-4xl mx-auto grid lg:grid-cols-2 gap-10 animate-in">
+            
+            {/* COLUNA 1: DASHBOARD TIMER */}
+            <div className="space-y-8">
+               <div className="bg-slate-900/40 backdrop-blur-3xl rounded-[3rem] p-10 md:p-14 text-center border border-white/5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                     <i className="fas fa-bolt text-9xl text-cyan-400 rotate-12"></i>
+                  </div>
+                  
+                  <div className="relative">
+                     <div className={`text-[42px] md:text-[64px] font-black font-mono tracking-tighter transition-all leading-none ${data.active ? 'text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'text-white'}`}>
+                        {formatT(data.seconds)}
+                     </div>
+                     <div className="text-xl font-black text-emerald-400 mt-4 italic">
+                        {cur((data.seconds / 3600) * data.rate)}
+                     </div>
+                  </div>
 
-                <div className="bg-black/50 p-8 rounded-[2.5rem] border border-white/5 mb-10">
-                   <label className="text-[10px] font-black text-slate-500 uppercase block mb-5 tracking-[0.4em]">Sessão Programada (minutos):</label>
-                   <div className="flex items-center justify-center gap-6">
-                      <button onClick={() => setData({...data, sessionGoal: Math.max(1, (data.sessionGoal || 30) - 15)})} className="w-14 h-14 rounded-2xl bg-slate-800 text-white hover:bg-slate-700 active:scale-90 transition-all border border-white/5"><i className="fas fa-minus"></i></button>
-                      <input type="number" className="w-24 bg-transparent text-center text-4xl font-black text-white outline-none" value={data.sessionGoal || 30} onChange={e => setData({...data, sessionGoal: parseInt(e.target.value) || 0})} />
-                      <button onClick={() => setData({...data, sessionGoal: (data.sessionGoal || 30) + 15})} className="w-14 h-14 rounded-2xl bg-slate-800 text-white hover:bg-slate-700 active:scale-90 transition-all border border-white/5"><i className="fas fa-plus"></i></button>
-                   </div>
-                </div>
+                  <div className="mt-10 space-y-4">
+                     <button onClick={handleToggleTimer} className={`w-full h-20 rounded-3xl font-black text-white text-[11px] uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 ${data.active ? 'bg-amber-600 shadow-lg shadow-amber-900/40' : 'bg-cyan-600 shadow-lg shadow-cyan-900/40 hover:scale-[1.02]'}`}>
+                        <i className={`fas ${data.active ? 'fa-pause' : 'fa-play'} text-xl`}></i>
+                        {data.active ? 'Interromper' : 'Iniciar Motor'}
+                     </button>
+                     <div className="grid grid-cols-2 gap-4">
+                        <button onClick={handleSave} className="h-14 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Finalizar</button>
+                        <button onClick={handleResetAndResume} className="h-14 bg-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-700">Limpar</button>
+                     </div>
+                  </div>
+               </div>
 
-                <button onClick={handleToggleTimer} className={`w-full h-24 rounded-[2rem] font-black text-white text-[12px] uppercase tracking-[0.4em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-5 mb-6 ${data.active ? 'bg-amber-600 shadow-amber-900/40' : 'bg-emerald-600 shadow-emerald-900/40'}`}>
-                  <i className={`fas ${data.active ? 'fa-pause' : 'fa-play'} text-2xl`}></i>
-                  {data.active ? 'PAUSAR MOTOR' : 'ATIVAR MOTOR IA'}
-                </button>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={handleSave} className="h-16 bg-rose-600 hover:bg-rose-500 rounded-2xl font-black text-white text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-lg"><i className="fas fa-save"></i> SALVAR</button>
-                  <button onClick={handleResetAndResume} className="h-16 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black text-white text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg border border-white/5">LIMPAR & RETOMAR</button>
-                </div>
+               {/* PROGRAMAÇÃO DE SESSÃO */}
+               <div className="bg-black/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/5">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-6">Programação de Alerta (Minutos)</span>
+                  <div className="flex items-center justify-between gap-6 px-4">
+                     <button onClick={() => setData({...data, sessionGoal: Math.max(1, (data.sessionGoal || 30) - 15)})} className="w-12 h-12 rounded-xl bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
+                     <input type="number" className="bg-transparent text-center text-3xl font-black text-white outline-none w-20" value={data.sessionGoal || 30} onChange={e => setData({...data, sessionGoal: parseInt(e.target.value) || 0})} />
+                     <button onClick={() => setData({...data, sessionGoal: (data.sessionGoal || 30) + 15})} className="w-12 h-12 rounded-xl bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 active:scale-90 transition-all"><i className="fas fa-plus"></i></button>
+                  </div>
+               </div>
             </div>
 
-            <div className="bg-slate-900/50 backdrop-blur-md p-10 rounded-[3.5rem] border border-white/5 space-y-8 shadow-xl">
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-2">
-                    <label className={`text-[9px] font-black uppercase ml-4 tracking-[0.2em] ${errorField === 'client' ? 'text-rose-500' : 'text-slate-500'}`}>Cliente Solicitante</label>
-                    <input disabled={data.active} className={`w-full bg-black/60 p-5 rounded-2xl border text-white font-bold uppercase text-[11px] outline-none transition-all ${errorField === 'client' ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-cyan-500'}`} placeholder="NOME DO CLIENTE..." value={data.client} onChange={e => setData(d => ({...d, client: e.target.value}))} />
+            {/* COLUNA 2: DADOS DO PROJETO */}
+            <div className="space-y-8">
+               <div className="bg-slate-900/40 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 space-y-6">
+                  <div className="space-y-1">
+                     <label className={`text-[9px] font-black uppercase ml-4 tracking-widest transition-colors ${errorField === 'client' ? 'text-rose-500' : 'text-slate-500'}`}>Cliente de Origem</label>
+                     <div className="relative">
+                        <i className="fas fa-user-circle absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"></i>
+                        <input disabled={data.active} className={`w-full bg-black/60 py-5 pl-14 pr-5 rounded-2xl border text-white font-bold uppercase text-[11px] outline-none transition-all ${errorField === 'client' ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-cyan-500'}`} placeholder="IDENTIFIQUE O CLIENTE..." value={data.client} onChange={e => setData(d => ({...d, client: e.target.value}))} />
+                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className={`text-[9px] font-black uppercase ml-4 tracking-[0.2em] ${errorField === 'project' ? 'text-rose-500' : 'text-slate-500'}`}>Especificação do Projeto</label>
-                    <input disabled={data.active} className={`w-full bg-black/60 p-5 rounded-2xl border text-white font-bold uppercase text-[11px] outline-none transition-all ${errorField === 'project' ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-cyan-500'}`} placeholder="TÍTULO DO PROJETO..." value={data.project} onChange={e => setData(d => ({...d, project: e.target.value}))} />
+                  
+                  <div className="space-y-1">
+                     <label className={`text-[9px] font-black uppercase ml-4 tracking-widest transition-colors ${errorField === 'project' ? 'text-rose-500' : 'text-slate-500'}`}>Especificação de Projeto</label>
+                     <div className="relative">
+                        <i className="fas fa-project-diagram absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"></i>
+                        <input disabled={data.active} className={`w-full bg-black/60 py-5 pl-14 pr-5 rounded-2xl border text-white font-bold uppercase text-[11px] outline-none transition-all ${errorField === 'project' ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-cyan-500'}`} placeholder="EX: COZINHA PLANEJADA..." value={data.project} onChange={e => setData(d => ({...d, project: e.target.value}))} />
+                     </div>
                   </div>
-                </div>
-                
-                <div className="bg-slate-950/80 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
-                   <div className="flex justify-between items-center mb-6">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">Valor Hora:</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl font-black text-white italic">{cur(data.rate)}</span>
-                        <input type="number" className="w-20 bg-slate-800 border border-white/10 text-center font-black p-3 rounded-xl text-[12px] text-white" value={data.rate} onChange={e => setData(d => ({...d, rate: parseFloat(e.target.value) || 0}))} />
-                      </div>
-                   </div>
-                   <input type="range" min="1" max="1500" step="10" className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" value={data.rate} onChange={e => setData(d => ({...d, rate: parseInt(e.target.value)}))} />
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-[0.2em]">Anotações Técnicas</label>
-                  <textarea className="w-full bg-black/60 p-6 rounded-[2.5rem] border border-white/10 text-[11px] text-slate-300 font-medium h-32 outline-none resize-none focus:border-purple-500 transition-all shadow-inner" placeholder="MEDIDAS, MDF, DETALHES..." value={data.notes} onChange={e => setData(d => ({...d, notes: e.target.value}))} />
-                </div>
+                  <div className="bg-black/60 p-6 rounded-2xl border border-white/5">
+                     <div className="flex justify-between items-center mb-4">
+                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest italic">VALOR HORA:</span>
+                        <div className="flex items-center gap-2">
+                           <span className="text-lg font-black text-white">{cur(data.rate)}</span>
+                           <input type="number" className="w-16 bg-slate-800 border-0 text-center font-black p-2 rounded-lg text-[10px] text-white outline-none" value={data.rate} onChange={e => setData(d => ({...d, rate: parseFloat(e.target.value) || 0}))} />
+                        </div>
+                     </div>
+                     <input type="range" min="1" max="1500" step="5" className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" value={data.rate} onChange={e => setData(d => ({...d, rate: parseInt(e.target.value)}))} />
+                  </div>
+
+                  <div className="space-y-1">
+                     <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-widest">Anotações do Designer</label>
+                     <textarea className="w-full bg-black/60 p-6 rounded-3xl border border-white/10 text-[11px] text-slate-300 font-medium h-24 outline-none resize-none focus:border-cyan-500 transition-all shadow-inner" placeholder="MEDIDAS, MATERIAIS, OBSERVAÇÕES..." value={data.notes} onChange={e => setData(d => ({...d, notes: e.target.value}))} />
+                  </div>
+               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'historico' && (
-          <div className="space-y-8 pb-24 animate-in max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in">
+            
+            {/* BARRA DE SELEÇÃO / SOMA */}
             {selectedIds.length > 0 && (
-              <div className="bg-slate-900 border-l-[12px] border-emerald-500 p-10 rounded-[3rem] shadow-2xl animate-in relative overflow-hidden">
-                 <div className="flex items-center justify-between mb-8">
-                   <h2 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
-                     <i className="fas fa-calculator text-emerald-500"></i> Seleção Consolidada
-                   </h2>
-                   <button onClick={() => setSelectedIds([])} className="w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all"><i className="fas fa-times"></i></button>
+              <div className="bg-cyan-500 p-8 md:p-10 rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 mb-10 text-white sticky top-0 z-40">
+                 <div className="text-center md:text-left">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-80">SOMA DA SELEÇÃO ({selectedIds.length})</span>
+                    <div className="text-2xl font-black italic tracking-tighter leading-tight">{cur(sumTotal)}</div>
+                    <div className="text-[11px] font-black uppercase opacity-70 font-mono">{formatT(sumSeconds)} ACUMULADOS</div>
                  </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-                    <div className="bg-black/40 p-6 rounded-3xl border border-white/5 shadow-inner">
-                       <span className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Cronometria Total</span>
-                       <span className="text-2xl font-black text-cyan-400 font-mono tracking-tighter">{formatT(sumSeconds)}</span>
-                    </div>
-                    <div className="bg-black/40 p-6 rounded-3xl border border-white/5 shadow-inner">
-                       <span className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Total Financeiro</span>
-                       <span className="text-2xl font-black text-emerald-400 italic tracking-tighter">{cur(sumTotal)}</span>
-                    </div>
+                 <div className="flex gap-4 w-full md:w-auto">
+                    <button onClick={() => exportWordReport("CONSOLIDAÇÃO DE INVESTIMENTO", selectedProjects, true)} className="flex-1 md:flex-none px-10 py-5 bg-white text-cyan-700 font-black rounded-2xl text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg active:scale-95">Exportar Soma</button>
+                    <button onClick={() => setSelectedIds([])} className="w-16 h-16 flex items-center justify-center bg-cyan-700 rounded-2xl hover:bg-cyan-800 transition-all"><i className="fas fa-times text-xl"></i></button>
                  </div>
-                 <button onClick={() => exportWordReport("RELATÓRIO DE SOMA CONSOLIDADA", selectedProjects, true)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3">
-                   <i className="fas fa-file-invoice-dollar text-xl"></i> EXPORTAR SOMA (SMART NAMING V54)
-                 </button>
               </div>
             )}
 
-            <div className="space-y-10">
+            {/* LISTAGEM DE HISTÓRICO */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-1 gap-6">
               {data.history.length === 0 ? (
-                <div className="text-center py-24 opacity-20">
-                  <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i className="fas fa-database text-4xl"></i>
-                  </div>
-                  <p className="font-black uppercase text-xs tracking-[0.5em]">Sem Registros no Banco</p>
+                <div className="text-center py-20 opacity-20">
+                  <i className="fas fa-folder-open text-6xl mb-4"></i>
+                  <p className="font-black text-xs uppercase tracking-widest">Base de Dados Vazia</p>
                 </div>
               ) : data.history.map((h: any) => (
-                <div key={h.id} className="relative group pl-12 animate-in">
-                  <div className="absolute top-10 left-0 z-10">
-                    <input type="checkbox" className="sr-only peer" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
-                    <div onClick={() => toggleSelect(h.id)} className="w-10 h-10 bg-slate-800 border-2 border-slate-700 rounded-2xl peer-checked:bg-cyan-500 peer-checked:border-cyan-500 transition-all flex items-center justify-center cursor-pointer shadow-xl active:scale-90"><i className="fas fa-check text-white text-sm opacity-0 peer-checked:opacity-100"></i></div>
+                <div key={h.id} className={`group flex flex-col lg:flex-row items-stretch lg:items-center gap-6 bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border p-8 transition-all duration-300 ${selectedIds.includes(h.id) ? 'border-cyan-500 ring-4 ring-cyan-500/10' : 'border-white/5 hover:bg-slate-900/60'}`}>
+                  
+                  {/* SELEÇÃO */}
+                  <div className="flex items-center gap-4">
+                     <input type="checkbox" className="sr-only peer" checked={selectedIds.includes(h.id)} onChange={() => toggleSelect(h.id)} />
+                     <div onClick={() => toggleSelect(h.id)} className="w-12 h-12 bg-slate-800 border-2 border-slate-700 rounded-2xl peer-checked:bg-cyan-500 peer-checked:border-cyan-500 transition-all flex items-center justify-center cursor-pointer active:scale-90"><i className="fas fa-check text-white text-sm opacity-0 peer-checked:opacity-100"></i></div>
                   </div>
 
-                  <div className={`bg-slate-900/90 rounded-[3.5rem] border transition-all duration-300 shadow-2xl overflow-hidden ${selectedIds.includes(h.id) ? 'border-cyan-500 ring-4 ring-cyan-500/10' : 'border-white/5 hover:border-white/10'}`}>
-                    
-                    {/* NOVO HEADER DO CARD: FOCO NO CLIENTE */}
-                    <div className="bg-slate-800/80 p-8 flex justify-between items-start border-b border-white/5">
-                       <div className="flex-1">
-                         <div className="flex items-center gap-2 mb-1">
-                            <i className="fas fa-user-tie text-cyan-400 text-xs"></i>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{h.date}</span>
-                         </div>
-                         <h3 className="text-xl font-black text-cyan-400 uppercase tracking-tighter leading-none mb-2 drop-shadow-sm">{h.client}</h3>
-                         <div className="flex items-center gap-2">
-                           <span className="h-px w-6 bg-slate-600"></span>
-                           <span className="text-[11px] font-bold text-slate-300 uppercase italic tracking-tight">{h.project}</span>
-                         </div>
-                       </div>
-                       <div className="text-right">
-                         <div className="text-emerald-400 text-2xl font-black font-mono drop-shadow-[0_0_10px_rgba(52,211,153,0.2)]">{cur(h.total)}</div>
-                         <div className="text-[9px] text-slate-500 font-black uppercase mt-1 italic opacity-60">{cur(h.rate)} / HORA</div>
-                       </div>
-                    </div>
-                    
-                    <div className="p-8 space-y-8">
-                       {/* BOX DE DADOS TÉCNICOS */}
-                       <div className="grid grid-cols-2 gap-6">
-                          <div className="bg-black/40 p-5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm">
-                            <span className="text-[8px] font-black text-slate-600 uppercase block mb-3 tracking-[0.2em] border-b border-white/5 pb-2">JANELA DE TRABALHO</span>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-slate-500 font-bold uppercase">INÍCIO:</span>
-                                <span className="text-[11px] font-black text-white font-mono">{h.startTime.split(',')[1]}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-slate-500 font-bold uppercase">TÉRMINO:</span>
-                                <span className="text-[11px] font-black text-white font-mono">{h.endTime.split(',')[1]}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="bg-black/40 p-5 rounded-3xl border border-white/5 shadow-inner backdrop-blur-sm flex flex-col justify-center text-center">
-                            <span className="text-[8px] font-black text-slate-600 uppercase block mb-2 tracking-[0.2em]">TEMPO PRODUZIDO</span>
-                            <span className="text-2xl font-black text-cyan-400 font-mono tracking-tighter drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">{formatT(h.time)}</span>
-                          </div>
-                       </div>
-                       
-                       {/* BOTÕES DE AÇÃO REORGANIZADOS */}
-                       <div className="flex gap-4 items-center pt-6 border-t border-white/5">
-                          <button onClick={() => handleContinueProject(h)} className="flex-[3] bg-cyan-600 hover:bg-cyan-500 text-white py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.3em] transition-all active:scale-95 shadow-lg shadow-cyan-900/40 flex items-center justify-center gap-3">
-                            <i className="fas fa-play text-sm"></i> REATIVAR
-                          </button>
-                          
-                          <button onClick={() => exportWordReport("RELATÓRIO TÉCNICO", [h], false)} className="flex-1 h-16 bg-slate-800 text-cyan-400 rounded-[1.5rem] hover:bg-cyan-600 hover:text-white transition-all active:scale-95 shadow-xl flex items-center justify-center border border-white/10 group/btn">
-                            <i className="fas fa-file-word text-xl group-hover/btn:scale-110 transition-transform"></i>
-                          </button>
-                          
-                          <button onClick={(e) => { e.stopPropagation(); setItemToDelete(h.id); }} className="flex-1 h-16 bg-rose-600/10 text-rose-500 rounded-[1.5rem] hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-xl flex items-center justify-center border border-rose-500/20 group/del">
-                            <i className="fas fa-trash-alt text-xl group-hover/del:rotate-12 transition-transform"></i>
-                          </button>
-                       </div>
-                    </div>
+                  {/* CONTEÚDO PRINCIPAL */}
+                  <div className="flex-1">
+                     <div className="flex items-center gap-3 mb-2">
+                        <span className="bg-slate-800 px-3 py-1 rounded-full text-[8px] font-black text-slate-500 uppercase tracking-widest">{h.date}</span>
+                        <span className="text-cyan-400 font-black text-[9px] uppercase tracking-[0.2em]">Auditoria Premium</span>
+                     </div>
+                     <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-1 drop-shadow-md">{h.client}</h3>
+                     <p className="text-[11px] font-bold text-slate-400 uppercase italic flex items-center gap-2">
+                        <i className="fas fa-angle-right text-cyan-500"></i> {h.project}
+                     </p>
+                  </div>
+
+                  {/* MÉTRICAS */}
+                  <div className="grid grid-cols-2 lg:flex lg:items-center gap-6 lg:gap-10 py-6 lg:py-0 border-y lg:border-y-0 lg:border-x border-white/5 lg:px-10">
+                     <div className="text-center lg:text-left">
+                        <span className="text-[8px] font-black text-slate-500 uppercase block mb-1 tracking-widest">Tempo</span>
+                        <span className="text-lg font-black text-cyan-400 font-mono tracking-tighter">{formatT(h.time)}</span>
+                     </div>
+                     <div className="text-center lg:text-left">
+                        <span className="text-[8px] font-black text-slate-500 uppercase block mb-1 tracking-widest">Investimento</span>
+                        <span className="text-lg font-black text-emerald-400 italic tracking-tighter">{cur(h.total)}</span>
+                     </div>
+                  </div>
+
+                  {/* AÇÕES */}
+                  <div className="flex gap-3 justify-center">
+                     <button onClick={() => handleContinueProject(h)} title="Reativar" className="w-14 h-14 bg-slate-800 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded-2xl transition-all active:scale-90 flex items-center justify-center"><i className="fas fa-sync-alt"></i></button>
+                     <button onClick={() => exportWordReport("RELATÓRIO DE AUDITORIA", [h], false)} title="Exportar Word" className="w-14 h-14 bg-slate-800 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-2xl transition-all active:scale-90 flex items-center justify-center"><i className="fas fa-file-word text-xl"></i></button>
+                     <button onClick={() => setItemToDelete(h.id)} title="Excluir" className="w-14 h-14 bg-slate-800 hover:bg-rose-600 text-rose-500 hover:text-white rounded-2xl transition-all active:scale-90 flex items-center justify-center"><i className="fas fa-trash-alt"></i></button>
                   </div>
                 </div>
               ))}
@@ -590,8 +547,12 @@ const App = () => {
         )}
       </main>
 
-      <footer className="p-5 bg-slate-950 border-t border-white/5 text-center relative z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-         <div className="text-[8px] font-black text-slate-700 uppercase tracking-[0.6em] opacity-40">LUCANO DESIGNER3D PRO V54.0 • AI ADVANCED REPROTS</div>
+      {/* FOOTER */}
+      <footer className="fixed bottom-0 md:bottom-auto md:top-0 right-0 p-6 z-[60] pointer-events-none md:pointer-events-auto">
+         <div className="hidden md:flex flex-col items-end opacity-30 hover:opacity-100 transition-opacity">
+            <span className="text-[10px] font-black text-white uppercase tracking-[0.5em]">{BRAND_NAME}</span>
+            <span className="text-[8px] font-bold text-cyan-400 uppercase tracking-widest">Engine V55.3 Stable</span>
+         </div>
       </footer>
     </div>
   );
